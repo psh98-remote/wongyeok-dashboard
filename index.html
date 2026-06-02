@@ -409,21 +409,21 @@ const sb = {
     select(s){ this._select=s; return this; },
     order(col, opts={}){ this._order.push(col+(opts.ascending===false?'.desc':'.asc')); return this; },
     eq(col,val){ this._filters.push(`${col}=eq.${encodeURIComponent(val)}`); return this; },
-    async _url(){ 
-      let u = `${SB_URL}/rest/v1/${this._table}?select=${this._select}`;
+    async _url(){
+      let u = `${SB_URL}/rest/v1/${this._table}?apikey=${SB_KEY}&select=${this._select}`;
       if(this._filters.length) u += '&' + this._filters.join('&');
       if(this._order.length) u += '&order=' + this._order.join(',');
       return u;
     },
     async _get(){ const r=await fetch(await this._url(),{headers:{...HEADERS,'Accept':'application/json'}}); const d=await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
     then(res,rej){ return this._get().then(res,rej); },
-    async insert(data){ const r=await fetch(`${SB_URL}/rest/v1/${this._table}`,{method:'POST',headers:HEADERS,body:JSON.stringify(data)}); const d=r.status===201||r.status===200?await r.json().catch(()=>[]):await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
+    async insert(data){ const r=await fetch(`${SB_URL}/rest/v1/${this._table}?apikey=${SB_KEY}`,{method:'POST',headers:HEADERS,body:JSON.stringify(data)}); const d=r.status===201||r.status===200?await r.json().catch(()=>[]):await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
     async update(data){ const r=await fetch(await this._url(),{method:'PATCH',headers:HEADERS,body:JSON.stringify(data)}); const d=await r.json().catch(()=>[]); return r.ok?{data:d,error:null}:{data:null,error:d}; },
     async delete(){ const r=await fetch(await this._url(),{method:'DELETE',headers:{...HEADERS,'Prefer':'return=minimal'}}); return r.ok?{data:null,error:null}:{data:null,error:{message:'delete failed'}}; },
   }),
   storage: {
     from: (bucket) => ({
-      async upload(path, file){ const r=await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},body:file}); const d=await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
+      async upload(path, file){ const r=await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}?apikey=${SB_KEY}`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},body:file}); const d=await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
       getPublicUrl(path){ return {data:{publicUrl:`${SB_URL}/storage/v1/object/public/${bucket}/${path}`}}; }
     })
   }
