@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>원격점검 관리 시스템</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1a1a18;font-size:14px}
@@ -401,9 +401,33 @@ textarea{resize:vertical;min-height:70px}
 <script>
 const SB_URL = 'https://akqpyhgtuwiftivslrwz.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrcXB5aGd0dXdpZnRpdnNscnd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzODE4NzQsImV4cCI6MjA5NTk1Nzg3NH0.1LgG40MwqQVyDuOJ88aaytOidZXdPUh4fFYbt4-qBp8';
-const sb = supabase.createClient(SB_URL, SB_KEY, {
-  global: { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
-});
+const HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+const sb = {
+  from: (table) => ({
+    _table: table, _filters: [], _order: [], _select: '*',
+    select(s){ this._select=s; return this; },
+    order(col, opts={}){ this._order.push(col+(opts.ascending===false?'.desc':'.asc')); return this; },
+    eq(col,val){ this._filters.push(`${col}=eq.${encodeURIComponent(val)}`); return this; },
+    async _url(){ 
+      let u = `${SB_URL}/rest/v1/${this._table}?select=${this._select}`;
+      if(this._filters.length) u += '&' + this._filters.join('&');
+      if(this._order.length) u += '&order=' + this._order.join(',');
+      return u;
+    },
+    async _get(){ const r=await fetch(await this._url(),{headers:{...HEADERS,'Accept':'application/json'}}); const d=await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
+    then(res,rej){ return this._get().then(res,rej); },
+    async insert(data){ const r=await fetch(`${SB_URL}/rest/v1/${this._table}`,{method:'POST',headers:HEADERS,body:JSON.stringify(data)}); const d=r.status===201||r.status===200?await r.json().catch(()=>[]):await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
+    async update(data){ const r=await fetch(await this._url(),{method:'PATCH',headers:HEADERS,body:JSON.stringify(data)}); const d=await r.json().catch(()=>[]); return r.ok?{data:d,error:null}:{data:null,error:d}; },
+    async delete(){ const r=await fetch(await this._url(),{method:'DELETE',headers:{...HEADERS,'Prefer':'return=minimal'}}); return r.ok?{data:null,error:null}:{data:null,error:{message:'delete failed'}}; },
+  }),
+  storage: {
+    from: (bucket) => ({
+      async upload(path, file){ const r=await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},body:file}); const d=await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
+      getPublicUrl(path){ return {data:{publicUrl:`${SB_URL}/storage/v1/object/public/${bucket}/${path}`}}; }
+    })
+  }
+};
 
 let DATA = { customers:[], inspections:[], licenses:[], reports:[], contacts:[], access:[] };
 let selectedFile = null;
