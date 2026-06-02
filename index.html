@@ -401,7 +401,9 @@ textarea{resize:vertical;min-height:70px}
 <script>
 const SB_URL = 'https://akqpyhgtuwiftivslrwz.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrcXB5aGd0dXdpZnRpdnNscnd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzODE4NzQsImV4cCI6MjA5NTk1Nzg3NH0.1LgG40MwqQVyDuOJ88aaytOidZXdPUh4fFYbt4-qBp8';
-const sb = supabase.createClient(SB_URL, SB_KEY);
+const sb = supabase.createClient(SB_URL, SB_KEY, {
+  global: { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+});
 
 let DATA = { customers:[], inspections:[], licenses:[], reports:[], contacts:[], access:[] };
 let selectedFile = null;
