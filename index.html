@@ -443,23 +443,40 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
 
 const sb = {
-  from: (table) => ({
-    _table: table, _filters: [], _order: [], _select: '*',
-    select(s){ this._select=s; return this; },
-    order(col, opts={}){ this._order.push(col+(opts.ascending===false?'.desc':'.asc')); return this; },
-    eq(col,val){ this._filters.push(`${col}=eq.${encodeURIComponent(val)}`); return this; },
-    async _url(){
-      let u = `${SB_URL}/rest/v1/${this._table}?apikey=${SB_KEY}&select=${this._select}`;
-      if(this._filters.length) u += '&' + this._filters.join('&');
-      if(this._order.length) u += '&order=' + this._order.join(',');
-      return u;
-    },
-    async _get(){ const r=await fetch(await this._url(),{headers:{...HEADERS,'Accept':'application/json'}}); const d=await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
-    then(res,rej){ return this._get().then(res,rej); },
-    async insert(data){ const r=await fetch(`${SB_URL}/rest/v1/${this._table}?apikey=${SB_KEY}`,{method:'POST',headers:HEADERS,body:JSON.stringify(data)}); const d=r.status===201||r.status===200?await r.json().catch(()=>[]):await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
-    async update(data){ const r=await fetch(await this._url(),{method:'PATCH',headers:HEADERS,body:JSON.stringify(data)}); const d=await r.json().catch(()=>[]); return r.ok?{data:d,error:null}:{data:null,error:d}; },
-    async delete(){ const r=await fetch(await this._url(),{method:'DELETE',headers:{...HEADERS,'Prefer':'return=minimal'}}); return r.ok?{data:null,error:null}:{data:null,error:{message:'delete failed'}}; },
-  }),
+  from: (table) => {
+    const q = {
+      _table: table, _filters: [], _order: [], _select: '*', _updateData: null, _method: 'GET',
+      select(s){ this._select=s; return this; },
+      order(col, opts={}){ this._order.push(col+(opts.ascending===false?'.desc':'.asc')); return this; },
+      eq(col,val){ this._filters.push(col+'=eq.'+encodeURIComponent(val)); return this; },
+      _buildUrl(){ 
+        let u = SB_URL+'/rest/v1/'+this._table+'?apikey='+SB_KEY+'&select='+this._select;
+        if(this._filters.length) u += '&' + this._filters.join('&');
+        if(this._order.length) u += '&order=' + this._order.join(',');
+        return u;
+      },
+      async _run(){
+        const url = this._buildUrl();
+        let opts = {headers:{...HEADERS,'Accept':'application/json'}};
+        if(this._method==='PATCH') opts = {method:'PATCH',headers:HEADERS,body:JSON.stringify(this._updateData)};
+        else if(this._method==='DELETE') opts = {method:'DELETE',headers:{...HEADERS,'Prefer':'return=minimal'}};
+        const r = await fetch(url, opts);
+        if(this._method==='DELETE') return r.ok?{data:null,error:null}:{data:null,error:{message:'delete failed'}};
+        const d = await r.json().catch(()=>[]);
+        return r.ok?{data:d,error:null}:{data:null,error:d};
+      },
+      then(res,rej){ return this._run().then(res,rej); },
+      update(data){ this._updateData=data; this._method='PATCH'; return this; },
+      delete(){ this._method='DELETE'; return this; },
+      async insert(data){ 
+        const url = SB_URL+'/rest/v1/'+this._table+'?apikey='+SB_KEY;
+        const r = await fetch(url,{method:'POST',headers:HEADERS,body:JSON.stringify(data)});
+        const d = await r.json().catch(()=>[]);
+        return r.ok?{data:d,error:null}:{data:null,error:d};
+      },
+    };
+    return q;
+  },
   storage: {
     from: (bucket) => ({
       async upload(path, file){ const r=await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}?apikey=${SB_KEY}`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},body:file}); const d=await r.json(); return r.ok?{data:d,error:null}:{data:null,error:d}; },
