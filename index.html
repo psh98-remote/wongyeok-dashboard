@@ -1157,7 +1157,7 @@ function normalizeDate(s){
   return '';
 }
 
-document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+// 모달 바깥 클릭으로 닫기 비활성화
 function showToast(msg,isErr){
   const t=document.getElementById('toast');
   t.textContent=msg;t.style.background=isErr?'#A32D2D':'#1a1a18';
