@@ -684,7 +684,7 @@ function openCustModal(c) {
 }
 
 function contactRow(ct,i){
-  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-contact-id="${ct.id||''}">
+  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-contactid="${ct.id||''}">
     <button onclick="removeRow(this)" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;line-height:1" title="삭제">✕</button>
     <div class="form-group"><label class="flabel">이름</label><input class="ct-name" value="${ct.contact_name||''}"></div>
     <div class="form-group"><label class="flabel">부서</label><input class="ct-dept" value="${ct.department||''}"></div>
@@ -694,7 +694,7 @@ function contactRow(ct,i){
   </div>`;
 }
 function accessRow(a,i){
-  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-access-id="${a.id||''}">
+  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-accessid="${a.id||''}">
     <button onclick="removeRow(this)" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;line-height:1" title="삭제">✕</button>
     <div class="form-group"><label class="flabel">접속방식</label>
       <select class="ac-method"><option ${a.method==='리모트콜'?'selected':''}>리모트콜</option><option ${a.method==='VPN'?'selected':''}>VPN</option><option ${a.method==='기타'?'selected':''}>기타</option></select>
@@ -705,8 +705,8 @@ function accessRow(a,i){
 }
 async function removeRow(btn) {
   const div = btn.closest('.form-grid');
-  const contactId = div.dataset.contactId;
-  const accessId = div.dataset.accessId;
+  const contactId = div.dataset.contactid;
+  const accessId = div.dataset.accessid;
   // ID가 숫자면 DB에 저장된 항목 → 삭제
   if(contactId && /^\d+$/.test(contactId)) {
     const {error} = await sb.from('contacts').delete().eq('id', parseInt(contactId));
@@ -759,7 +759,7 @@ async function saveCustomer() {
   // save contacts
   const contactDivs = document.getElementById('contact-list-area').querySelectorAll('.form-grid');
   for(const div of contactDivs){
-    const cid = div.dataset.contactId;
+    const cid = div.dataset.contactid;
     const cd = {
       customer_name:savedName,
       contact_name:div.querySelector('.ct-name').value,
@@ -774,7 +774,7 @@ async function saveCustomer() {
   // save access
   const accessDivs = document.getElementById('access-list-area').querySelectorAll('.form-grid');
   for(const div of accessDivs){
-    const aid = div.dataset.accessId;
+    const aid = div.dataset.accessid;
     const ad = {
       customer_name:savedName,
       method:div.querySelector('.ac-method').value,
