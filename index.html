@@ -687,13 +687,17 @@ async function removeRow(btn) {
   const div = btn.closest('.form-grid');
   const contactId = div.dataset.contactId;
   const accessId = div.dataset.accessId;
-  if(contactId && !contactId.startsWith('1') && contactId.length > 5) {
-    await sb.from('contacts').delete().eq('id', contactId);
+  // ID가 숫자면 DB에 저장된 항목 → 삭제
+  if(contactId && /^\d+$/.test(contactId)) {
+    const {error} = await sb.from('contacts').delete().eq('id', parseInt(contactId));
+    if(error){ showToast('삭제 실패: '+error.message, true); return; }
   }
-  if(accessId && !accessId.startsWith('1') && accessId.length > 5) {
-    await sb.from('access_info').delete().eq('id', accessId);
+  if(accessId && /^\d+$/.test(accessId)) {
+    const {error} = await sb.from('access_info').delete().eq('id', parseInt(accessId));
+    if(error){ showToast('삭제 실패: '+error.message, true); return; }
   }
   div.remove();
+  showToast('삭제됐어요');
 }
 
 function addContactRow(){
