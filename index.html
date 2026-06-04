@@ -435,6 +435,25 @@ textarea{resize:vertical;min-height:70px}
   </div>
 </div>
 
+<div class="overlay" id="schedule-modal">
+  <div class="modal" style="width:320px">
+    <h2><span>예정 날짜 등록</span><button onclick="closeModal('schedule-modal')">✕</button></h2>
+    <input type="hidden" id="schedule-insp-id">
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="flabel">점검 예정일</label>
+      <input type="date" id="schedule-date" style="width:100%;margin-top:4px">
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="flabel">비고 (예: 10시 예정)</label>
+      <input type="text" id="schedule-note" placeholder="예) 오전 10시" style="width:100%;margin-top:4px">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('schedule-modal')">취소</button>
+      <button class="btn btn-primary" onclick="saveSchedule()">등록</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -586,8 +605,9 @@ function renderHome() {
         <span style="font-size:11px;color:#aaa">${i.inspection_date||''}</span>
       </div>
       ${i.note?`<div style="font-size:11px;color:#aaa;margin-top:4px">${i.note}</div>`:''}
-      <div style="margin-top:8px;display:flex;gap:4px">
-        <button class="btn btn-sm" onclick="quickStatus(${i.id},'완료')">완료처리</button>
+      <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
+        ${i.status!=='완료'?`<button class="btn btn-sm btn-primary" onclick="quickStatus(${i.id},'완료')">완료처리</button>`:''}
+        ${i.status!=='예정'?`<button class="btn btn-sm" style="color:#854F0B;border-color:#FAC775" onclick="openSchedulePopup(${i.id})">예정 등록</button>`:''}
         <button class="btn btn-sm" onclick="editInspection(${i.id})">수정</button>
       </div>
     </div>`).join('') : '<div class="empty">이번 달 점검 데이터가 없어요</div>';
@@ -1148,6 +1168,32 @@ function goEditCustomer() {
   if(c){ closeModal('detail-modal'); editCustomer(c.id); }
 }
 
+
+function openSchedulePopup(id) {
+  const i = DATA.inspections.find(x => x.id === id);
+  document.getElementById('schedule-insp-id').value = id;
+  document.getElementById('schedule-date').value = i && i.inspection_date ? normalizeDate(i.inspection_date) : '';
+  document.getElementById('schedule-note').value = '';
+  document.getElementById('schedule-modal').classList.add('open');
+}
+
+async function saveSchedule() {
+  const id = document.getElementById('schedule-insp-id').value;
+  const date = document.getElementById('schedule-date').value;
+  const note = document.getElementById('schedule-note').value;
+  if(!date){ alert('날짜를 선택해주세요'); return; }
+  const displayDate = date.replace(/-/g,'.') + (note ? ' ' + note : '');
+  const {error} = await sb.from('inspections').update({
+    status: '예정',
+    inspection_date: displayDate
+  }).eq('id', parseInt(id));
+  if(error){ showToast('저장 실패', true); return; }
+  showToast('예정 등록됐어요!');
+  closeModal('schedule-modal');
+  const idx = DATA.inspections.findIndex(x => x.id === parseInt(id));
+  if(idx >= 0){ DATA.inspections[idx].status = '예정'; DATA.inspections[idx].inspection_date = displayDate; }
+  renderHome(); renderInspections();
+}
 
 function normalizeDate(s){
   if(!s) return '';
