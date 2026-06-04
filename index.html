@@ -1028,7 +1028,7 @@ function openDetailModal(name) {
         ${thisInsp.status!=='완료'?`<button class="btn btn-sm btn-primary" onclick="quickStatusFromDetail(${thisInsp.id})">완료처리</button>`:''}
         <button class="btn btn-sm" onclick="editInspection(${thisInsp.id});closeModal('detail-modal')">수정</button>
       </div>
-    </div>` : '<div style="color:#bbb;font-size:13px">이번 달 점검 데이터 없음 <button class="btn btn-sm" style="margin-left:8px" onclick="openInspModal();closeModal('detail-modal')">추가</button></div>';
+    </div>` : '<div style="color:#bbb;font-size:13px">이번 달 점검 데이터 없음 <button class="btn btn-sm" style="margin-left:8px" onclick="openInspModal();closeModal(&quot;detail-modal&quot;)">추가</button></div>';
 
   // 히스토리
   const insp = DATA.inspections.filter(i=>i.customer_name===name).sort((a,b)=>b.year.localeCompare(a.year)||b.month.localeCompare(a.month));
