@@ -918,7 +918,10 @@ async function saveReport(){
   if(!cn){alert('고객사명을 입력해주세요');return;}
   if(!selectedFile){alert('파일을 선택해주세요');return;}
   showToast('업로드 중...');
-  const filePath=`${cn}/${Date.now()}_${selectedFile.name}`;
+  const ext = selectedFile.name.includes('.') ? selectedFile.name.split('.').pop() : '';
+  const safeFileName = Date.now() + (ext ? '.' + ext : '');
+  const safeCustomer = encodeURIComponent(cn).replace(/%/g,'');
+  const filePath=`${safeCustomer}/${Date.now()}_${safeFileName}`;
   const {data:upData,error:upErr}=await sb.storage.from('reports').upload(filePath,selectedFile);
   if(upErr){showToast('파일 업로드 실패: '+upErr.message,true);return;}
   const {data:urlData}=sb.storage.from('reports').getPublicUrl(filePath);
