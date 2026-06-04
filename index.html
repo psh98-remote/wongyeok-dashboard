@@ -421,9 +421,9 @@ textarea{resize:vertical;min-height:70px}
       </div>
       <div class="form-group full"><label class="flabel">파일 업로드</label>
         <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
-          📄 클릭하여 파일 선택 (pdf, docx, xlsx)
+          📄 클릭하여 파일 선택 (여러 개 가능)
         </div>
-        <input type="file" id="file-input" style="display:none" accept=".pdf,.docx,.xlsx,.hwp" onchange="handleFile(this)">
+        <input type="file" id="file-input" style="display:none" accept=".pdf,.docx,.xlsx,.hwp" multiple onchange="handleFile(this)">
         <div id="file-name-display" style="font-size:12px;color:#7F77DD;margin-top:4px"></div>
       </div>
       <div class="form-group full"><label class="flabel">비고</label><textarea id="rf-note" rows="2"></textarea></div>
@@ -486,7 +486,7 @@ const sb = {
 };
 
 let DATA = { customers:[], inspections:[], licenses:[], reports:[], contacts:[], access:[] };
-let selectedFile = null;
+let selectedFiles = [];
 const NOW = new Date();
 const THIS_MONTH = String(NOW.getMonth()+1).padStart(2,'0');
 const THIS_YEAR = String(NOW.getFullYear());
@@ -881,8 +881,8 @@ async function delLicense(id){
 
 // ── REPORTS ──
 function handleFile(input){
-  selectedFile=input.files[0];
-  document.getElementById('file-name-display').textContent=selectedFile?'선택됨: '+selectedFile.name:'';
+  selectedFiles=Array.from(input.files);
+  document.getElementById('file-name-display').textContent=selectedFiles.length?selectedFiles.map(f=>f.name).join(', '):'';
 }
 function renderReports(){
   const q=document.getElementById('rq').value.toLowerCase();
@@ -910,25 +910,30 @@ function openReportModal(){
   document.getElementById('rf-note').value='';
   document.getElementById('file-name-display').textContent='';
   document.getElementById('file-input').value='';
-  selectedFile=null;
+  selectedFiles=[];
   document.getElementById('rep-modal').classList.add('open');
 }
 async function saveReport(){
   const cn=document.getElementById('rf-name').value.trim();
   if(!cn){alert('고객사명을 입력해주세요');return;}
-  if(!selectedFile){alert('파일을 선택해주세요');return;}
-  showToast('업로드 중...');
-  const ext = selectedFile.name.includes('.') ? selectedFile.name.split('.').pop() : '';
-  const safeFileName = Date.now() + (ext ? '.' + ext : '');
-  const safeCustomer = encodeURIComponent(cn).replace(/%/g,'');
-  const filePath=`${safeCustomer}/${Date.now()}_${safeFileName}`;
-  const {data:upData,error:upErr}=await sb.storage.from('reports').upload(filePath,selectedFile);
-  if(upErr){showToast('파일 업로드 실패: '+upErr.message,true);return;}
-  const {data:urlData}=sb.storage.from('reports').getPublicUrl(filePath);
-  const data={customer_name:cn,year:document.getElementById('rf-year').value,month:document.getElementById('rf-month').value,file_name:selectedFile.name,file_url:urlData.publicUrl,note:document.getElementById('rf-note').value};
-  const {error}=await sb.from('reports').insert(data);
-  if(error){showToast('저장 실패',true);return;}
-  showToast('보고서 등록됐어요!');
+  if(!selectedFiles.length){alert('파일을 선택해주세요');return;}
+  showToast('업로드 중... (0/'+selectedFiles.length+')');
+  const year=document.getElementById('rf-year').value;
+  const month=document.getElementById('rf-month').value;
+  const note=document.getElementById('rf-note').value;
+  let ok=0, fail=0;
+  for(const file of selectedFiles){
+    const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+    const filePath = Date.now() + '_' + Math.random().toString(36).slice(2,6) + (ext ? '.' + ext : '');
+    const {data:upData,error:upErr}=await sb.storage.from('reports').upload(filePath,file);
+    if(upErr){fail++;continue;}
+    const {data:urlData}=sb.storage.from('reports').getPublicUrl(filePath);
+    const data={customer_name:cn,year,month,file_name:file.name,file_url:urlData.publicUrl,note};
+    const {error}=await sb.from('reports').insert(data);
+    if(error) fail++; else ok++;
+  }
+  if(fail>0) showToast(ok+'개 등록, '+fail+'개 실패', true);
+  else showToast(ok+'개 보고서 등록됐어요!');
   closeModal('rep-modal');await loadAll();
 }
 async function delReport(id){
