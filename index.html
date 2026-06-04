@@ -129,6 +129,16 @@ textarea{resize:vertical;min-height:70px}
 <div class="page active" id="page-home">
   <div class="stat-row" id="home-stats"></div>
   <div id="home-alerts"></div>
+
+  <!-- 고객사 검색 -->
+  <div style="background:#fff;border:1px solid #e5e3db;border-radius:10px;padding:14px 16px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#444">🔍 고객사 빠른 검색</div>
+    <div style="display:flex;gap:8px">
+      <input class="search-input" type="text" id="quick-search" placeholder="고객사명 입력..." oninput="quickSearch()" style="flex:1">
+    </div>
+    <div id="quick-search-results" style="margin-top:8px"></div>
+  </div>
+
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <strong style="font-size:14px" id="home-month-title"></strong>
     <div style="display:flex;gap:6px">
@@ -250,6 +260,34 @@ textarea{resize:vertical;min-height:70px}
   <div id="history-container"></div>
 </div>
 
+<!-- 고객사 상세 모달 -->
+<div class="overlay" id="detail-modal">
+  <div class="modal modal-lg" style="width:700px">
+    <h2><span id="detail-modal-name" style="font-size:16px"></span><button onclick="closeModal('detail-modal')">x</button></h2>
+    <div id="detail-basic" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px"></div>
+    <div style="background:#f5f4f0;border-radius:8px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:8px">이번 달 점검</div>
+      <div id="detail-this-month"></div>
+    </div>
+    <div class="modal-tabs" style="margin-bottom:12px">
+      <button class="modal-tab active" onclick="switchDetailTab(0)">점검 히스토리</button>
+      <button class="modal-tab" onclick="switchDetailTab(1)">라이선스</button>
+      <button class="modal-tab" onclick="switchDetailTab(2)">보고서</button>
+      <button class="modal-tab" onclick="switchDetailTab(3)">담당자/접속정보</button>
+    </div>
+    <div class="modal-tab-content active" id="detail-tab-0"><div id="detail-history"></div></div>
+    <div class="modal-tab-content" id="detail-tab-1"><div id="detail-licenses"></div></div>
+    <div class="modal-tab-content" id="detail-tab-2"><div id="detail-reports"></div></div>
+    <div class="modal-tab-content" id="detail-tab-3">
+      <div id="detail-contacts" style="margin-bottom:12px"></div>
+      <div id="detail-access"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('detail-modal')">닫기</button>
+      <button class="btn btn-primary" onclick="goEditCustomer()">고객사 수정</button>
+    </div>
+  </div>
+</div>
 <!-- ══════════ MODALS ══════════ -->
 
 <!-- Customer Modal -->
@@ -926,6 +964,143 @@ function switchModalTab(prefix,idx){
   document.querySelectorAll(`#${prefix}-modal .modal-tab-content`).forEach((t,i)=>t.classList.toggle('active',i===idx));
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ── QUICK SEARCH ──
+let searchTimer = null;
+function quickSearch() {
+  const q = document.getElementById('quick-search').value.trim().toLowerCase();
+  const area = document.getElementById('quick-search-results');
+  if (!q) { area.innerHTML = ''; return; }
+  const results = DATA.customers.filter(c => c.name.toLowerCase().includes(q));
+  if (!results.length) { area.innerHTML = '<div style="color:#bbb;font-size:13px;padding:4px 0">검색 결과 없음</div>'; return; }
+  area.innerHTML = results.slice(0,8).map(c => `
+    <div onclick="openDetailModal('${c.name.replace(/'/g,"\'")}')
+" style="padding:8px 12px;border:1px solid #e5e3db;border-radius:6px;margin-bottom:6px;cursor:pointer;background:#fff;display:flex;align-items:center;justify-content:space-between" onmouseover="this.style.background='#f5f4f0'" onmouseout="this.style.background='#fff'">
+      <div>
+        <div style="font-size:13px;font-weight:500">${c.name}</div>
+        <div style="font-size:12px;color:#aaa">${c.product||''} ${c.version||''} · ${c.manager||''} · ${c.cycle||''}</div>
+      </div>
+      <span style="font-size:12px;color:#7F77DD">상세보기 →</span>
+    </div>`).join('');
+}
+
+let detailCustomerName = '';
+function openDetailModal(name) {
+  detailCustomerName = name;
+  document.getElementById('quick-search').value = '';
+  document.getElementById('quick-search-results').innerHTML = '';
+  const c = DATA.customers.find(x => x.name === name);
+  if (!c) return;
+  document.getElementById('detail-modal-name').textContent = c.name;
+  const mLabel = {'01':'1월','02':'2월','03':'3월','04':'4월','05':'5월','06':'6월','07':'7월','08':'8월','09':'9월','10':'10월','11':'11월','12':'12월'};
+  const badge = s => s==='완료'?'<span class="badge b-done">완료</span>':s==='예정'?'<span class="badge b-plan">예정</span>':'<span class="badge b-todo">미완료</span>';
+
+  // 기본정보
+  const infos = [
+    ['유지보수 계약명', c.contract_name],
+    ['점검주기', c.cycle],
+    ['특정일', c.specific_day],
+    ['점검제품', c.product + ' ' + (c.version||'')],
+    ['담당자', c.manager],
+    ['VPN', c.vpn],
+    ['보안서약', c.security],
+    ['계약기간', (c.contract_start||'') + (c.contract_end?' ~ '+c.contract_end:'')],
+  ];
+  document.getElementById('detail-basic').innerHTML = infos.map(([l,v]) => v ? `
+    <div style="background:#fafaf8;border-radius:6px;padding:8px 10px">
+      <div style="font-size:11px;color:#aaa;margin-bottom:2px">${l}</div>
+      <div style="font-size:13px">${v||'-'}</div>
+    </div>` : '').join('');
+
+  // 이번달 점검
+  const thisInsp = DATA.inspections.find(i => i.customer_name===name && i.year===THIS_YEAR && i.month===THIS_MONTH);
+  document.getElementById('detail-this-month').innerHTML = thisInsp ? `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      ${badge(thisInsp.status)}
+      <span style="font-size:13px">${thisInsp.inspection_date||'점검일 미정'}</span>
+      <span style="font-size:12px;color:#888">${thisInsp.product||''} ${thisInsp.version||''}</span>
+      ${thisInsp.note ? '<span style="font-size:12px;color:#aaa">'+thisInsp.note+'</span>' : ''}
+      <div style="margin-left:auto;display:flex;gap:6px">
+        ${thisInsp.status!=='완료'?`<button class="btn btn-sm btn-primary" onclick="quickStatusFromDetail(${thisInsp.id})">완료처리</button>`:''}
+        <button class="btn btn-sm" onclick="editInspection(${thisInsp.id});closeModal('detail-modal')">수정</button>
+      </div>
+    </div>` : '<div style="color:#bbb;font-size:13px">이번 달 점검 데이터 없음 <button class="btn btn-sm" style="margin-left:8px" onclick="openInspModal();closeModal('detail-modal')">추가</button></div>';
+
+  // 히스토리
+  const insp = DATA.inspections.filter(i=>i.customer_name===name).sort((a,b)=>b.year.localeCompare(a.year)||b.month.localeCompare(a.month));
+  document.getElementById('detail-history').innerHTML = insp.length ? `
+    <div class="timeline">${insp.map(i=>`
+      <div class="tl-item">
+        <div class="tl-dot ${i.status==='완료'?'done':i.status==='미완료'?'todo':''}"></div>
+        <div class="tl-date">${i.year}년 ${mLabel[i.month]||i.month}</div>
+        <div class="tl-content" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${badge(i.status)}
+          ${i.inspection_date?'<span style="font-size:12px;color:#888">'+i.inspection_date+'</span>':''}
+          ${i.manager?'<span style="font-size:12px;color:#aaa">'+i.manager+'</span>':''}
+          ${i.note?'<span style="font-size:12px;color:#bbb">'+i.note+'</span>':''}
+        </div>
+      </div>`).join('')}
+    </div>` : '<div class="empty">점검 이력 없음</div>';
+
+  // 라이선스
+  const lics = DATA.licenses.filter(l=>l.customer_name===name);
+  document.getElementById('detail-licenses').innerHTML = lics.length ? `
+    <table class="sub-table">
+      <thead><tr><th>프로젝트명</th><th>제품</th><th>버전</th><th>IP</th><th>발급일</th><th>비고</th></tr></thead>
+      <tbody>${lics.map(l=>`<tr><td>${l.project_name||'-'}</td><td>${l.product||'-'}</td><td>${l.version||'-'}</td><td><code style="font-size:11px;background:#f0eeea;padding:1px 5px;border-radius:3px">${l.ip||'-'}</code></td><td>${l.issued_at?l.issued_at.slice(0,10):'-'}</td><td>${l.note||'-'}</td></tr>`).join('')}
+      </tbody>
+    </table>` : '<div class="empty">라이선스 정보 없음</div>';
+
+  // 보고서
+  const reps = DATA.reports.filter(r=>r.customer_name===name);
+  document.getElementById('detail-reports').innerHTML = reps.length ? `
+    <table class="sub-table">
+      <thead><tr><th>연/월</th><th>파일명</th><th>비고</th><th>등록일</th></tr></thead>
+      <tbody>${reps.map(r=>`<tr><td>${r.year||''}/${mLabel[r.month]||r.month||'-'}</td><td>${r.file_url?'<a href="'+r.file_url+'" target="_blank" style="color:#7F77DD">'+r.file_name+'</a>':r.file_name||'-'}</td><td>${r.note||'-'}</td><td style="font-size:11px;color:#aaa">${r.created_at?r.created_at.slice(0,10):''}</td></tr>`).join('')}
+      </tbody>
+    </table>` : '<div class="empty">보고서 없음</div>';
+
+  // 담당자
+  const conts = DATA.contacts.filter(ct=>ct.customer_name===name);
+  document.getElementById('detail-contacts').innerHTML = conts.length ? `
+    <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:6px">담당자</div>
+    <table class="sub-table">
+      <thead><tr><th>이름</th><th>부서</th><th>전화</th><th>이메일</th><th>메모</th></tr></thead>
+      <tbody>${conts.map(ct=>`<tr><td>${ct.contact_name||'-'}</td><td>${ct.department||'-'}</td><td>${ct.phone||'-'}</td><td>${ct.email||'-'}</td><td>${ct.note||'-'}</td></tr>`).join('')}
+      </tbody>
+    </table>` : '<div style="color:#bbb;font-size:13px;margin-bottom:12px">담당자 정보 없음</div>';
+
+  // 접속정보
+  const accs = DATA.access.filter(a=>a.customer_name===name);
+  document.getElementById('detail-access').innerHTML = accs.length ? `
+    <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:6px">접속정보</div>
+    <table class="sub-table">
+      <thead><tr><th>방식</th><th>계정</th><th>상세</th></tr></thead>
+      <tbody>${accs.map(a=>`<tr><td><span class="tag">${a.method||'-'}</span></td><td>${a.account||'-'}</td><td style="max-width:300px;word-break:break-all">${a.note||'-'}</td></tr>`).join('')}
+      </tbody>
+    </table>` : '<div style="color:#bbb;font-size:13px">접속정보 없음</div>';
+
+  switchDetailTab(0);
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+async function quickStatusFromDetail(id) {
+  await quickStatus(id, '완료');
+  const name = detailCustomerName;
+  openDetailModal(name);
+}
+
+function switchDetailTab(idx) {
+  document.querySelectorAll('#detail-modal .modal-tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('#detail-modal .modal-tab-content').forEach((t,i)=>t.classList.toggle('active',i===idx));
+}
+
+function goEditCustomer() {
+  const c = DATA.customers.find(x=>x.name===detailCustomerName);
+  if(c){ closeModal('detail-modal'); editCustomer(c.id); }
+}
+
+
 function normalizeDate(s){
   if(!s) return '';
   if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
