@@ -664,7 +664,8 @@ function openCustModal(c) {
 }
 
 function contactRow(ct,i){
-  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px" data-contact-id="${ct.id||''}">
+  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-contact-id="${ct.id||''}">
+    <button onclick="removeRow(this)" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;line-height:1" title="삭제">✕</button>
     <div class="form-group"><label class="flabel">이름</label><input class="ct-name" value="${ct.contact_name||''}"></div>
     <div class="form-group"><label class="flabel">부서</label><input class="ct-dept" value="${ct.department||''}"></div>
     <div class="form-group"><label class="flabel">전화</label><input class="ct-phone" value="${ct.phone||''}"></div>
@@ -673,7 +674,8 @@ function contactRow(ct,i){
   </div>`;
 }
 function accessRow(a,i){
-  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px" data-access-id="${a.id||''}">
+  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-access-id="${a.id||''}">
+    <button onclick="removeRow(this)" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;line-height:1" title="삭제">✕</button>
     <div class="form-group"><label class="flabel">접속방식</label>
       <select class="ac-method"><option ${a.method==='리모트콜'?'selected':''}>리모트콜</option><option ${a.method==='VPN'?'selected':''}>VPN</option><option ${a.method==='기타'?'selected':''}>기타</option></select>
     </div>
@@ -681,6 +683,19 @@ function accessRow(a,i){
     <div class="form-group full"><label class="flabel">상세 접속정보</label><textarea class="ac-note" rows="3">${a.note||''}</textarea></div>
   </div>`;
 }
+async function removeRow(btn) {
+  const div = btn.closest('.form-grid');
+  const contactId = div.dataset.contactId;
+  const accessId = div.dataset.accessId;
+  if(contactId && !contactId.startsWith('1') && contactId.length > 5) {
+    await sb.from('contacts').delete().eq('id', contactId);
+  }
+  if(accessId && !accessId.startsWith('1') && accessId.length > 5) {
+    await sb.from('access_info').delete().eq('id', accessId);
+  }
+  div.remove();
+}
+
 function addContactRow(){
   const area = document.getElementById('contact-list-area');
   const prev = area.querySelector('.form-grid') ? '' : '';
