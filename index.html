@@ -694,13 +694,17 @@ function contactRow(ct,i){
   </div>`;
 }
 function accessRow(a,i){
-  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-accessid="${a.id||''}">
+  const fileHtml = a.file_url
+    ? `<div style="margin-top:4px;font-size:12px">📎 <a href="${a.file_url}" target="_blank" style="color:#7F77DD">${a.file_name||'파일'}</a> <button onclick="removeAccessFile(this,'${a.id||''}')" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:11px">삭제</button></div>`
+    : `<div style="margin-top:4px"><input type="file" class="ac-file" accept=".pdf,.docx,.xlsx,.hwp,.pptx,.png,.jpg" style="font-size:12px"></div>`;
+  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-accessid="${a.id||''}" data-file-url="${a.file_url||''}" data-file-name="${a.file_name||''}">
     <button onclick="removeRow(this)" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;line-height:1" title="삭제">✕</button>
     <div class="form-group"><label class="flabel">접속방식</label>
       <select class="ac-method"><option ${a.method==='리모트콜'?'selected':''}>리모트콜</option><option ${a.method==='VPN'?'selected':''}>VPN</option><option ${a.method==='기타'?'selected':''}>기타</option></select>
     </div>
     <div class="form-group"><label class="flabel">계정</label><input class="ac-account" value="${a.account||''}"></div>
     <div class="form-group full"><label class="flabel">상세 접속정보</label><textarea class="ac-note" rows="3">${a.note||''}</textarea></div>
+    <div class="form-group full"><label class="flabel">가이드/매뉴얼 파일</label>${fileHtml}</div>
   </div>`;
 }
 async function removeRow(btn) {
@@ -780,9 +784,24 @@ async function saveCustomer() {
       method:div.querySelector('.ac-method').value,
       account:div.querySelector('.ac-account').value,
       note:div.querySelector('.ac-note').value,
+      file_name: div.dataset.fileName || null,
+      file_url: div.dataset.fileUrl || null,
     };
-    if(aid && !aid.startsWith('1')) await sb.from('access_info').update(ad).eq('id',aid);
-    else if(ad.note||ad.account) await sb.from('access_info').insert(ad);
+    // 파일 업로드 처리
+    const fileInput = div.querySelector('.ac-file');
+    if(fileInput && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+      const filePath = Date.now() + '_' + Math.random().toString(36).slice(2,6) + (ext?'.'+ext:'');
+      const {data:upData, error:upErr} = await sb.storage.from('manuals').upload(filePath, file);
+      if(!upErr) {
+        const {data:urlData} = sb.storage.from('manuals').getPublicUrl(filePath);
+        ad.file_name = file.name;
+        ad.file_url = urlData.publicUrl;
+      }
+    }
+    if(aid && /^\d+$/.test(aid)) await sb.from('access_info').update(ad).eq('id', parseInt(aid));
+    else if(ad.note||ad.account||ad.file_url) await sb.from('access_info').insert(ad);
   }
 
   showToast(id?'수정됐어요!':'추가됐어요!');
@@ -1168,6 +1187,19 @@ function goEditCustomer() {
   if(c){ closeModal('detail-modal'); editCustomer(c.id); }
 }
 
+
+async function removeAccessFile(btn, aid) {
+  if(!confirm('파일을 삭제할까요?')) return;
+  if(aid && /^\d+$/.test(aid)) {
+    await sb.from('access_info').update({file_name:null, file_url:null}).eq('id', parseInt(aid));
+  }
+  const div = btn.closest('[data-accessid]');
+  div.dataset.fileUrl = '';
+  div.dataset.fileName = '';
+  const fileArea = btn.parentElement;
+  fileArea.innerHTML = '<input type="file" class="ac-file" accept=".pdf,.docx,.xlsx,.hwp,.pptx,.png,.jpg" style="font-size:12px">';
+  showToast('파일 삭제됐어요');
+}
 
 function openSchedulePopup(id) {
   const i = DATA.inspections.find(x => x.id === id);
