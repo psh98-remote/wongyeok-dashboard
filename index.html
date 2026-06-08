@@ -1,3 +1,26 @@
+<!-- 로그인 화면 -->
+<div id="login-page" style="display:none;position:fixed;inset:0;background:#f5f4f0;z-index:9999;display:flex;align-items:center;justify-content:center">
+  <div style="background:#fff;border:1px solid #e5e3db;border-radius:12px;padding:36px 40px;width:360px;max-width:94vw">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:28px;margin-bottom:8px">📋</div>
+      <div style="font-size:18px;font-weight:600;color:#1a1a18">원격점검 관리시스템</div>
+      <div style="font-size:13px;color:#aaa;margin-top:4px">한컴이노스트림 기술지원팀</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label style="font-size:12px;color:#666;font-weight:500;display:block;margin-bottom:4px">이메일</label>
+        <input type="email" id="login-email" placeholder="이메일 입력" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()">
+      </div>
+      <div>
+        <label style="font-size:12px;color:#666;font-weight:500;display:block;margin-bottom:4px">비밀번호</label>
+        <input type="password" id="login-pw" placeholder="비밀번호 입력" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="login-error" style="color:#A32D2D;font-size:12px;display:none;padding:6px 0"></div>
+      <button onclick="doLogin()" style="width:100%;padding:10px;background:#7F77DD;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;margin-top:4px">로그인</button>
+    </div>
+  </div>
+</div>
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -114,7 +137,7 @@ textarea{resize:vertical;min-height:70px}
 <body>
 <header>
   <h1>📋 원격점검 관리시스템</h1>
-  <span style="margin-left:auto;font-size:12px;color:#aaa" id="hdr-date"></span>
+  <span style="margin-left:auto;font-size:12px;color:#aaa" id="hdr-date"></span><button onclick="doLogout()" class="btn btn-sm" style="margin-left:12px;font-size:12px">로그아웃</button>
 </header>
 <div class="nav">
   <button class="nav-btn active" onclick="goPage('home',this)">🏠 이번 달 할 일</button>
