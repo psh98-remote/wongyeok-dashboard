@@ -1284,15 +1284,17 @@ function showLoginPage() {
   document.getElementById('login-page').style.display = 'flex';
   document.querySelector('header').style.display = 'none';
   document.querySelector('.nav').style.display = 'none';
-  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
 }
 
 function showApp() {
   document.getElementById('login-page').style.display = 'none';
   document.querySelector('header').style.display = 'flex';
   document.querySelector('.nav').style.display = 'flex';
-  document.querySelectorAll('.page').forEach(p => p.style.display = '');
-  document.getElementById('page-home').style.display = 'block';
+  // 모든 페이지 숨기고 home만 표시
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-home').classList.add('active');
+  // 탭 active 초기화
+  document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', i===0));
   loadAll();
 }
 
