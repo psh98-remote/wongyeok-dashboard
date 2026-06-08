@@ -1163,7 +1163,7 @@ function openDetailModal(name) {
     <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:6px">접속정보</div>
     <table class="sub-table">
       <thead><tr><th>방식</th><th>계정</th><th>상세</th></tr></thead>
-      <tbody>${accs.map(a=>`<tr><td><span class="tag">${a.method||'-'}</span></td><td>${a.account||'-'}</td><td style="max-width:300px;word-break:break-all">${a.note||'-'}</td></tr>`).join('')}
+      <tbody>${accs.map(a=>`<tr><td><span class="tag">${a.method||'-'}</span></td><td>${a.account||'-'}</td><td style="max-width:300px;word-break:break-all;white-space:pre-wrap">${a.note||'-'}</td></tr>`).join('')}
       </tbody>
     </table>` : '<div style="color:#bbb;font-size:13px">접속정보 없음</div>';
 
