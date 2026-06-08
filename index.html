@@ -1265,7 +1265,71 @@ function showToast(msg,isErr){
   t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);
 }
 
-loadAll();
+// ── AUTH ──
+async function checkAuth() {
+  const session = localStorage.getItem('sb_session');
+  if(session) {
+    try {
+      const s = JSON.parse(session);
+      if(s.expires_at && Date.now() / 1000 < s.expires_at) {
+        showApp();
+        return;
+      }
+    } catch(e) {}
+  }
+  showLoginPage();
+}
+
+function showLoginPage() {
+  document.getElementById('login-page').style.display = 'flex';
+  document.querySelector('header').style.display = 'none';
+  document.querySelector('.nav').style.display = 'none';
+  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+}
+
+function showApp() {
+  document.getElementById('login-page').style.display = 'none';
+  document.querySelector('header').style.display = 'flex';
+  document.querySelector('.nav').style.display = 'flex';
+  document.querySelectorAll('.page').forEach(p => p.style.display = '');
+  document.getElementById('page-home').style.display = 'block';
+  loadAll();
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if(!email || !pw) { errEl.textContent = '이메일과 비밀번호를 입력해주세요'; errEl.style.display = 'block'; return; }
+  const btn = document.querySelector('#login-page button');
+  btn.textContent = '로그인 중...'; btn.disabled = true;
+  try {
+    const r = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw })
+    });
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error_description || data.msg || '로그인 실패');
+    localStorage.setItem('sb_session', JSON.stringify({
+      access_token: data.access_token,
+      expires_at: data.expires_at || (Date.now()/1000 + 3600*24)
+    }));
+    showApp();
+  } catch(e) {
+    errEl.textContent = '이메일 또는 비밀번호가 올바르지 않아요';
+    errEl.style.display = 'block';
+    btn.textContent = '로그인'; btn.disabled = false;
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('sb_session');
+  location.reload();
+}
+
+checkAuth();
 </script>
 </body>
 </html>
