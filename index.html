@@ -730,11 +730,13 @@ function renderHome() {
         ${badge(i.status)}
         <span style="font-size:11px;color:#aaa">${i.inspection_date||''}</span>
       </div>
-      ${i.note?`<div style="font-size:11px;color:var(--text3);margin-top:4px">${i.note}</div>`:''}
+      <div style="margin-top:8px">
+        <textarea class="card-note-input" data-id="${i.id}" placeholder="비고 입력..." rows="2" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);resize:none;font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)';saveCardNote(${i.id},this.value)">${i.note||''}</textarea>
+      </div>
       <div class="todo-card-footer">
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${i.status!=='완료'?`<button class="btn btn-sm btn-primary" onclick="quickStatus(${i.id},'완료')">완료</button>`:''}
-          ${i.status!=='예정'?`<button class="btn btn-sm b-plan" style="border-color:#fcd58a;color:var(--orange);background:var(--orange-bg)" onclick="openSchedulePopup(${i.id})">예정 등록</button>`:''}
+          ${i.status!=='예정'?`<button class="btn btn-sm" style="border-color:#fcd58a;color:var(--orange);background:var(--orange-bg)" onclick="openSchedulePopup(${i.id})">예정 등록</button>`:''}
           <button class="btn btn-sm" onclick="editInspection(${i.id})">수정</button>
         </div>
         <span class="todo-card-date">${i.inspection_date||''}</span>
@@ -813,12 +815,13 @@ function openCustModal(c) {
 }
 
 function contactRow(ct,i){
-  return `<div class="form-grid" style="margin-bottom:8px;padding:8px;background:#fafaf8;border-radius:6px;position:relative" data-contactid="${ct.id||''}">
-    <button onclick="removeRow(this)" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;line-height:1" title="삭제">✕</button>
+  return `<div class="form-grid" style="margin-bottom:10px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);position:relative" data-contactid="${ct.id||''}">
+    <button onclick="removeRow(this)" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px" title="삭제" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='none'">✕</button>
     <div class="form-group"><label class="flabel">이름</label><input class="ct-name" value="${ct.contact_name||''}"></div>
     <div class="form-group"><label class="flabel">부서</label><input class="ct-dept" value="${ct.department||''}"></div>
     <div class="form-group"><label class="flabel">전화</label><input class="ct-phone" value="${ct.phone||''}"></div>
-    <div class="form-group"><label class="flabel">이메일</label><input type="email" class="ct-email" value="${ct.email||''}"></div>
+    <div class="form-group"><label class="flabel">이메일 (수신)</label><input type="email" class="ct-email" value="${ct.email||''}"></div>
+    <div class="form-group full"><label class="flabel">참조 이메일 (CC)</label><input type="email" class="ct-cc" placeholder="참조할 이메일 주소 (여러 개면 쉼표로 구분)" value="${ct.cc_email||''}"></div>
     <div class="form-group full"><label class="flabel">메모</label><input class="ct-note" value="${ct.note||''}"></div>
   </div>`;
 }
@@ -899,6 +902,7 @@ async function saveCustomer() {
       department:div.querySelector('.ct-dept').value,
       phone:div.querySelector('.ct-phone').value,
       email:div.querySelector('.ct-email').value,
+      cc_email:div.querySelector('.ct-cc').value,
       note:div.querySelector('.ct-note').value,
     };
     if(cid && !cid.startsWith('1')) await sb.from('contacts').update(cd).eq('id',cid);
@@ -1279,12 +1283,19 @@ function openDetailModal(name) {
   // 담당자
   const conts = DATA.contacts.filter(ct=>ct.customer_name===name);
   document.getElementById('detail-contacts').innerHTML = conts.length ? `
-    <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:6px">담당자</div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">담당자</div>
     <table class="sub-table">
-      <thead><tr><th>이름</th><th>부서</th><th>전화</th><th>이메일</th><th>메모</th></tr></thead>
-      <tbody>${conts.map(ct=>`<tr><td>${ct.contact_name||'-'}</td><td>${ct.department||'-'}</td><td>${ct.phone||'-'}</td><td>${ct.email||'-'}</td><td>${ct.note||'-'}</td></tr>`).join('')}
+      <thead><tr><th>이름</th><th>부서</th><th>전화</th><th>이메일 (수신)</th><th>참조 (CC)</th><th>메모</th></tr></thead>
+      <tbody>${conts.map(ct=>`<tr>
+        <td>${ct.contact_name||'-'}</td>
+        <td>${ct.department||'-'}</td>
+        <td>${ct.phone||'-'}</td>
+        <td>${ct.email?`<a href="mailto:${ct.email}" style="color:var(--accent)">${ct.email}</a>`:'-'}</td>
+        <td style="font-size:11px;color:var(--text2)">${ct.cc_email||'-'}</td>
+        <td>${ct.note||'-'}</td>
+      </tr>`).join('')}
       </tbody>
-    </table>` : '<div style="color:#bbb;font-size:13px;margin-bottom:12px">담당자 정보 없음</div>';
+    </table>` : '<div style="color:var(--text3);font-size:13px;margin-bottom:12px">담당자 정보 없음</div>';
 
   // 접속정보
   const accs = DATA.access.filter(a=>a.customer_name===name);
@@ -1328,6 +1339,14 @@ async function removeAccessFile(btn, aid) {
   const fileArea = btn.parentElement;
   fileArea.innerHTML = '<input type="file" class="ac-file" accept=".pdf,.docx,.xlsx,.hwp,.pptx,.png,.jpg" style="font-size:12px">';
   showToast('파일 삭제됐어요');
+}
+
+async function saveCardNote(id, note) {
+  const {error} = await sb.from('inspections').update({note}).eq('id', parseInt(id));
+  if(error){ showToast('저장 실패', true); return; }
+  const idx = DATA.inspections.findIndex(i=>i.id===parseInt(id));
+  if(idx>=0) DATA.inspections[idx].note = note;
+  showToast('비고 저장됐어요');
 }
 
 function openSchedulePopup(id) {
