@@ -827,7 +827,6 @@ function licenseRow(l) {
       <div class="form-group"><label class="flabel">제품</label><input class="lic-product" placeholder="예) 리포트" value="${l.product||''}"></div>
       <div class="form-group"><label class="flabel">버전</label><input class="lic-version" placeholder="예) 5.0" value="${l.version||''}"></div>
       <div class="form-group full"><label class="flabel">IP 주소 (여러 개는 줄바꿈으로 구분)</label><textarea class="lic-ip" rows="3" style="height:auto" placeholder="192.168.1.1&#10;192.168.1.2">${l.ip||''}</textarea></div>
-      <div class="form-group"><label class="flabel">발급일</label><input type="date" class="lic-issued" value="${l.issued_at?l.issued_at.slice(0,10):''}"></div>
       <div class="form-group full"><label class="flabel">비고</label><input class="lic-note" value="${l.note||''}"></div>
     </div>
   </div>`;
@@ -939,7 +938,6 @@ async function saveCustomer() {
       product: div.querySelector('.lic-product').value,
       version: div.querySelector('.lic-version').value,
       ip: div.querySelector('.lic-ip').value,
-      issued_at: div.querySelector('.lic-issued').value || null,
       note: div.querySelector('.lic-note').value,
     };
     if(lid && /^\d+$/.test(lid)) await sb.from('licenses').update(ld).eq('id', parseInt(lid));
