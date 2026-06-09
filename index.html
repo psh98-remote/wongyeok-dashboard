@@ -246,7 +246,7 @@ textarea{resize:vertical;min-height:72px;height:auto}
   <button class="nav-btn active" onclick="goPage('home',this)"><span class="nav-icon">🏠</span> 이번 달 할 일</button>
   <button class="nav-btn" onclick="goPage('customers',this)"><span class="nav-icon">🏢</span> 고객사</button>
   <button class="nav-btn" onclick="goPage('inspections',this)"><span class="nav-icon">✅</span> 점검 현황</button>
-  <button class="nav-btn" onclick="goPage('licenses',this)"><span class="nav-icon">🔑</span> 라이선스</button>
+  
   <button class="nav-btn" onclick="goPage('reports',this)"><span class="nav-icon">📁</span> 보고서</button>
   <button class="nav-btn" onclick="goPage('history',this)"><span class="nav-icon">📅</span> 히스토리</button>
 </div>
@@ -337,25 +337,6 @@ textarea{resize:vertical;min-height:72px;height:auto}
   </div>
 </div>
 
-<!-- ═══ LICENSES ═══ -->
-<div class="page" id="page-licenses">
-  <div class="toolbar">
-    <input class="search-input" type="text" id="lq" placeholder="고객사명·프로젝트명 검색..." oninput="renderLicenses()">
-    <select class="filter-select" id="l-prod" onchange="renderLicenses()">
-      <option value="">전체 제품</option><option>리포트</option><option>이폼</option><option>코드엑스</option><option>한글로폼</option>
-    </select>
-    <button class="btn btn-primary" onclick="openLicModal()">+ 라이선스 추가</button>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>고객사</th><th>프로젝트명</th><th>제품</th><th>버전</th><th>IP</th><th>발급일</th><th>비고</th><th>관리</th>
-      </tr></thead>
-      <tbody id="lic-body"><tr><td colspan="8" class="loading">불러오는 중...</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
 <!-- ═══ REPORTS ═══ -->
 <div class="page" id="page-reports">
   <div class="toolbar">
@@ -425,6 +406,7 @@ textarea{resize:vertical;min-height:72px;height:auto}
       <button class="modal-tab active" onclick="switchModalTab('cust',0)">기본정보</button>
       <button class="modal-tab" onclick="switchModalTab('cust',1)">담당자</button>
       <button class="modal-tab" onclick="switchModalTab('cust',2)">접속정보</button>
+      <button class="modal-tab" onclick="switchModalTab('cust',3)">라이선스</button>
     </div>
     <input type="hidden" id="cust-id">
     <!-- Tab 0 기본정보 -->
@@ -461,6 +443,11 @@ textarea{resize:vertical;min-height:72px;height:auto}
     <div class="modal-tab-content" id="cust-tab-2">
       <div id="access-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addAccessRow()">+ 접속정보 추가</button>
+    </div>
+    <!-- Tab 3 라이선스 -->
+    <div class="modal-tab-content" id="cust-tab-3">
+      <div id="license-list-area"></div>
+      <button class="btn btn-sm" style="margin-top:8px" onclick="addLicenseRow()">+ 라이선스 추가</button>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('cust-modal')">취소</button>
@@ -501,29 +488,6 @@ textarea{resize:vertical;min-height:72px;height:auto}
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('insp-modal')">취소</button>
       <button class="btn btn-primary" onclick="saveInspection()">저장</button>
-    </div>
-  </div>
-</div>
-
-<!-- License Modal -->
-<div class="overlay" id="lic-modal">
-  <div class="modal">
-    <h2><span id="lic-modal-title">라이선스 추가</span><button onclick="closeModal('lic-modal')">✕</button></h2>
-    <input type="hidden" id="lic-id">
-    <div class="form-grid">
-      <div class="form-group full"><label class="flabel">고객사명 *</label>
-        <input id="lf-name" list="cust-dl2"><datalist id="cust-dl2"></datalist>
-      </div>
-      <div class="form-group full"><label class="flabel">프로젝트명</label><input id="lf-project"></div>
-      <div class="form-group"><label class="flabel">제품</label><input id="lf-product" placeholder="예) 리포트"></div>
-      <div class="form-group"><label class="flabel">버전</label><input id="lf-version" placeholder="예) 5.0"></div>
-      <div class="form-group full"><label class="flabel">IP</label><input id="lf-ip" placeholder="예) 192.168.1.1"></div>
-      <div class="form-group"><label class="flabel">발급일</label><input type="date" id="lf-issued"></div>
-      <div class="form-group full"><label class="flabel">비고</label><textarea id="lf-note" rows="2"></textarea></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('lic-modal')">취소</button>
-      <button class="btn btn-primary" onclick="saveLicense()">저장</button>
     </div>
   </div>
 </div>
@@ -657,7 +621,6 @@ async function loadAll() {
   renderHome();
   renderCustomers();
   renderInspections();
-  renderLicenses();
   renderReports();
   renderHistory();
 }
@@ -856,6 +819,35 @@ async function removeRow(btn) {
   showToast('삭제됐어요');
 }
 
+function licenseRow(l) {
+  return `<div style="margin-bottom:10px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);position:relative" data-licenseid="${l.id||''}">
+    <button onclick="removeLicenseRow(this)" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='none'">✕</button>
+    <div class="form-grid">
+      <div class="form-group full"><label class="flabel">프로젝트명</label><input class="lic-project" value="${l.project_name||''}"></div>
+      <div class="form-group"><label class="flabel">제품</label><input class="lic-product" placeholder="예) 리포트" value="${l.product||''}"></div>
+      <div class="form-group"><label class="flabel">버전</label><input class="lic-version" placeholder="예) 5.0" value="${l.version||''}"></div>
+      <div class="form-group full"><label class="flabel">IP 주소 (여러 개는 줄바꿈으로 구분)</label><textarea class="lic-ip" rows="3" style="height:auto" placeholder="192.168.1.1&#10;192.168.1.2">${l.ip||''}</textarea></div>
+      <div class="form-group"><label class="flabel">발급일</label><input type="date" class="lic-issued" value="${l.issued_at?l.issued_at.slice(0,10):''}"></div>
+      <div class="form-group full"><label class="flabel">비고</label><input class="lic-note" value="${l.note||''}"></div>
+    </div>
+  </div>`;
+}
+
+function addLicenseRow() {
+  document.getElementById('license-list-area').innerHTML += licenseRow({});
+}
+
+async function removeLicenseRow(btn) {
+  const div = btn.closest('[data-licenseid]');
+  const lid = div.dataset.licenseid;
+  if(lid && /^\d+$/.test(lid)) {
+    const {error} = await sb.from('licenses').delete().eq('id', parseInt(lid));
+    if(error){ showToast('삭제 실패', true); return; }
+  }
+  div.remove();
+  showToast('삭제됐어요');
+}
+
 function addContactRow(){
   const area = document.getElementById('contact-list-area');
   const prev = area.querySelector('.form-grid') ? '' : '';
@@ -935,6 +927,23 @@ async function saveCustomer() {
     }
     if(aid && /^\d+$/.test(aid)) await sb.from('access_info').update(ad).eq('id', parseInt(aid));
     else if(ad.note||ad.account||ad.file_url) await sb.from('access_info').insert(ad);
+  }
+
+  // save licenses
+  const licenseDivs = document.getElementById('license-list-area').querySelectorAll('[data-licenseid]');
+  for(const div of licenseDivs){
+    const lid = div.dataset.licenseid;
+    const ld = {
+      customer_name: savedName,
+      project_name: div.querySelector('.lic-project').value,
+      product: div.querySelector('.lic-product').value,
+      version: div.querySelector('.lic-version').value,
+      ip: div.querySelector('.lic-ip').value,
+      issued_at: div.querySelector('.lic-issued').value || null,
+      note: div.querySelector('.lic-note').value,
+    };
+    if(lid && /^\d+$/.test(lid)) await sb.from('licenses').update(ld).eq('id', parseInt(lid));
+    else if(ld.project_name||ld.ip||ld.product) await sb.from('licenses').insert(ld);
   }
 
   showToast(id?'수정됐어요!':'추가됐어요!');
