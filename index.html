@@ -626,7 +626,7 @@ async function loadAll() {
 }
 
 function updateDataLists() {
-  ['cust-dl','cust-dl2','cust-dl3'].forEach(id => {
+  ['cust-dl','cust-dl3'].forEach(id => {
     document.getElementById(id).innerHTML = DATA.customers.map(c=>`<option value="${c.name}">`).join('');
   });
 }
@@ -1025,59 +1025,11 @@ async function delInspection(id){
 }
 
 // ── LICENSES ──
-function renderLicenses(){
-  const q=document.getElementById('lq').value.toLowerCase();
-  const pr=document.getElementById('l-prod').value;
-  let rows=DATA.licenses.filter(l=>{
-    if(q&&!l.customer_name.toLowerCase().includes(q)&&!(l.project_name||'').toLowerCase().includes(q))return false;
-    if(pr&&!(l.product||'').includes(pr))return false;
-    return true;
-  });
-  document.getElementById('lic-body').innerHTML=rows.length?rows.map(l=>`
-    <tr>
-      <td class="ellipsis">${l.customer_name}</td>
-      <td class="ellipsis">${l.project_name||'-'}</td>
-      <td>${l.product||'-'}</td>
-      <td>${l.version||'-'}</td>
-      <td><code style="font-size:12px;background:#f0eeea;padding:2px 6px;border-radius:4px">${l.ip||'-'}</code></td>
-      <td>${l.issued_at?l.issued_at.slice(0,10):'-'}</td>
-      <td class="ellipsis" title="${l.note||''}">${l.note||'-'}</td>
-      <td class="actions">
-        <button class="btn btn-sm" onclick="editLicense(${l.id})">수정</button>
-        <button class="btn btn-sm btn-danger" onclick="delLicense(${l.id})">삭제</button>
-      </td>
-    </tr>`).join(''):'<tr><td colspan="8" class="empty">검색 결과 없음</td></tr>';
-}
-function openLicModal(l){
-  document.getElementById('lic-modal-title').textContent=l?'라이선스 수정':'라이선스 추가';
-  document.getElementById('lic-id').value=l?l.id:'';
-  document.getElementById('lf-name').value=l?l.customer_name:'';
-  document.getElementById('lf-project').value=l?l.project_name||'':'';
-  document.getElementById('lf-product').value=l?l.product||'':'';
-  document.getElementById('lf-version').value=l?l.version||'':'';
-  document.getElementById('lf-ip').value=l?l.ip||'':'';
-  document.getElementById('lf-issued').value=l?l.issued_at?l.issued_at.slice(0,10):'':'';
-  document.getElementById('lf-note').value=l?l.note||'':'';
-  document.getElementById('lic-modal').classList.add('open');
-}
-function editLicense(id){openLicModal(DATA.licenses.find(l=>l.id===id));}
-async function saveLicense(){
-  const id=document.getElementById('lic-id').value;
-  const cn=document.getElementById('lf-name').value.trim();
-  if(!cn){alert('고객사명을 입력해주세요');return;}
-  const data={customer_name:cn,project_name:document.getElementById('lf-project').value,product:document.getElementById('lf-product').value,version:document.getElementById('lf-version').value,ip:document.getElementById('lf-ip').value,issued_at:document.getElementById('lf-issued').value||null,note:document.getElementById('lf-note').value};
-  let err;
-  if(id){({error:err}=await sb.from('licenses').update(data).eq('id',id));}
-  else{({error:err}=await sb.from('licenses').insert(data));}
-  if(err){showToast('저장 실패',true);return;}
-  showToast(id?'수정됐어요!':'추가됐어요!');
-  closeModal('lic-modal');await loadAll();
-}
-async function delLicense(id){
-  if(!confirm('삭제할까요?'))return;
-  await sb.from('licenses').delete().eq('id',id);
-  showToast('삭제됐어요');await loadAll();
-}
+
+
+{}
+
+
 
 // ── REPORTS ──
 function handleFile(input){
