@@ -750,19 +750,19 @@ function renderCustomers() {
     });
 
     const sysHtml = allSystems.length ? allSystems.map(s=>`
-      <div style="display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
         ${cycBadge(s.cycle)}
-        <span style="color:var(--text);font-weight:500">${s.system_name||'시스템명 없음'}</span>
-        <span style="color:var(--text3)">${s.product||''} ${s.version||''}</span>
-        <span style="color:var(--text3)">· ${s.manager||'-'}</span>
-        ${s.vpn==='사용'?'<span class="tag">VPN</span>':''}
-        ${multiContract?`<span style="font-size:10px;color:var(--text3);margin-left:auto;background:var(--bg3);padding:1px 6px;border-radius:3px;white-space:nowrap">${s._contract||''}</span>`:''}
+        <span style="color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${s.system_name||'-'}</span>
+        <span style="color:var(--text3);white-space:nowrap">${s.product||''} ${s.version||''}</span>
+        <span style="color:var(--text3);white-space:nowrap">· ${s.manager||'-'}</span>
+        ${s.vpn==='사용'?'<span class="tag" style="white-space:nowrap">VPN</span>':''}
       </div>`).join('') : '<span style="font-size:12px;color:var(--text3)">-</span>';
 
     const firstC = g.customers[0];
-    const btnHtml = g.customers.map(c=>
-      `<button class="btn btn-sm" onclick="editCustomer(${c.id})" title="${c.contract_name||''}">수정${multiContract?` <span style="font-size:10px;opacity:.6">(${(c.contract_name||'').slice(0,4)})</span>`:''}</button>`
-    ).join('');
+    const btnHtml = `<div style="display:flex;flex-direction:column;gap:4px">` +
+      g.customers.map(c=>
+        `<button class="btn btn-sm" onclick="editCustomer(${c.id})" title="${c.contract_name||''}" style="white-space:nowrap">수정${multiContract?` <span style="font-size:10px;opacity:.6">(${(c.contract_name||'').slice(0,5)})</span>`:''}</button>`
+      ).join('') + `</div>`;
 
     const checkIds = g.customers.map(c=>c.id).join(',');
     return `<tr style="vertical-align:top" data-ids="${checkIds}">
