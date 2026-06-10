@@ -403,10 +403,10 @@ textarea{resize:vertical;min-height:72px;height:auto}
     <h2><span id="cust-modal-title">고객사 추가</span><button onclick="closeModal('cust-modal')">✕</button></h2>
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="switchModalTab('cust',0)">기본정보</button>
-      <button class="modal-tab" onclick="switchModalTab('cust',4)">업무시스템</button>
-      <button class="modal-tab" onclick="switchModalTab('cust',1)">담당자</button>
-      <button class="modal-tab" onclick="switchModalTab('cust',2)">접속정보</button>
-      <button class="modal-tab" onclick="switchModalTab('cust',3)">라이선스</button>
+      <button class="modal-tab" onclick="switchModalTab('cust',1)">업무시스템</button>
+      <button class="modal-tab" onclick="switchModalTab('cust',2)">담당자</button>
+      <button class="modal-tab" onclick="switchModalTab('cust',3)">접속정보</button>
+      <button class="modal-tab" onclick="switchModalTab('cust',4)">라이선스</button>
     </div>
     <input type="hidden" id="cust-id">
     <!-- Tab 0 기본정보 -->
@@ -423,22 +423,22 @@ textarea{resize:vertical;min-height:72px;height:auto}
       </div>
     </div>
     <!-- Tab 4 업무시스템 -->
-    <div class="modal-tab-content" id="cust-tab-4">
+    <div class="modal-tab-content" id="cust-tab-1">
       <div id="system-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addSystemRow()">+ 업무시스템 추가</button>
     </div>
     <!-- Tab 1 담당자 -->
-    <div class="modal-tab-content" id="cust-tab-1">
+    <div class="modal-tab-content" id="cust-tab-2">
       <div id="contact-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addContactRow()">+ 담당자 추가</button>
     </div>
     <!-- Tab 2 접속정보 -->
-    <div class="modal-tab-content" id="cust-tab-2">
+    <div class="modal-tab-content" id="cust-tab-3">
       <div id="access-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addAccessRow()">+ 접속정보 추가</button>
     </div>
     <!-- Tab 3 라이선스 -->
-    <div class="modal-tab-content" id="cust-tab-3">
+    <div class="modal-tab-content" id="cust-tab-4">
       <div id="license-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addLicenseRow()">+ 라이선스 추가</button>
     </div>
