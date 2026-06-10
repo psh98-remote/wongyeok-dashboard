@@ -713,35 +713,44 @@ async function quickStatus(id, status) {
 }
 
 // ── CUSTOMERS ──
-function renderCustomers(data) {
+function renderCustomers() {
   const q = document.getElementById('cq').value.toLowerCase();
   const cycle = document.getElementById('c-cycle').value;
   const prod = document.getElementById('c-prod').value;
   const mgr = document.getElementById('c-mgr').value;
+  const cycBadge = s => s==='월1회'?'<span class="badge b-monthly">월1회</span>':s==='분기'?'<span class="badge b-quarter">분기</span>':`<span class="tag">${s||'-'}</span>`;
+
   let rows = DATA.customers.filter(c=>{
     if(q && !c.name.toLowerCase().includes(q)) return false;
-    if(cycle && c.cycle!==cycle) return false;
-    if(prod && !(c.product||'').includes(prod)) return false;
-    if(mgr && c.manager!==mgr) return false;
+    const sysList = DATA.systems.filter(s=>s.customer_name===c.name);
+    if(cycle && !sysList.some(s=>s.cycle===cycle)) return false;
+    if(prod && !sysList.some(s=>(s.product||'').includes(prod))) return false;
+    if(mgr && !sysList.some(s=>s.manager===mgr)) return false;
     return true;
   });
-  const cycBadge = s => s==='월1회'?'<span class="badge b-monthly">월1회</span>':s==='분기'?'<span class="badge b-quarter">분기</span>':`<span class="tag">${s||'-'}</span>`;
-  document.getElementById('cust-body').innerHTML = rows.length ? rows.map(c=>`
-    <tr>
-      <td class="ellipsis" title="${c.name}"><strong>${c.name}</strong></td>
-      <td>${cycBadge(c.cycle)}</td>
-      <td class="ellipsis">${c.base_month||'-'}</td>
-      <td class="ellipsis" title="${c.specific_day||''}">${c.specific_day||'-'}</td>
-      <td>${c.product||'-'} <span style="color:#aaa">${c.version||''}</span></td>
-      <td>${c.manager||'-'}</td>
-      <td><span class="tag">${c.vpn||'-'}</span></td>
+
+  document.getElementById('cust-body').innerHTML = rows.length ? rows.map(c=>{
+    const sysList = DATA.systems.filter(s=>s.customer_name===c.name);
+    const sysHtml = sysList.length ? sysList.map(s=>`
+      <div style="display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:12px">
+        ${cycBadge(s.cycle)}
+        <span style="color:var(--text);font-weight:500">${s.system_name||'시스템명 없음'}</span>
+        <span style="color:var(--text3)">${s.product||''} ${s.version||''}</span>
+        <span style="color:var(--text3)">· ${s.manager||'-'}</span>
+        ${s.vpn==='사용'?'<span class="tag">VPN</span>':''}
+      </div>`).join('') : '<span style="color:var(--text3);font-size:12px">-</span>';
+    return `<tr>
+      <td title="${c.name}"><strong style="font-size:13px">${c.name}</strong></td>
+      <td class="ellipsis" style="font-size:12px;color:var(--text2);max-width:200px">${c.contract_name||'-'}</td>
+      <td style="min-width:300px">${sysHtml}</td>
       <td>${c.security||'-'}</td>
-      <td style="font-size:11px;color:#aaa">${c.contract_start?c.contract_start.slice(0,10):''} ${c.contract_end?'~ '+c.contract_end.slice(0,10):''}</td>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${c.contract_start?c.contract_start.slice(0,10):''}${c.contract_end?' ~ '+c.contract_end.slice(0,10):''}</td>
       <td class="actions">
         <button class="btn btn-sm" onclick="editCustomer(${c.id})">수정</button>
         <button class="btn btn-sm btn-danger" onclick="delCustomer(${c.id})">삭제</button>
       </td>
-    </tr>`).join('') : '<tr><td colspan="10" class="empty">검색 결과 없음</td></tr>';
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">검색 결과 없음</td></tr>';
 }
 
 function openCustModal(c) {
