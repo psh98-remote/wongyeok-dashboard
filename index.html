@@ -295,10 +295,12 @@ textarea{resize:vertical;min-height:72px;height:auto}
       <option value="">전체 담당자</option><option>박소희</option><option>한대웅</option><option>정상우</option><option>유재천</option>
     </select>
     <button class="btn btn-primary" onclick="openCustModal()">+ 고객사 추가</button>
+    <button class="btn btn-danger" onclick="deleteSelected()" id="delete-selected-btn" style="display:none">선택 삭제</button>
   </div>
   <div class="table-wrap">
     <table>
       <thead><tr>
+        <th style="width:36px"><input type="checkbox" id="check-all" onchange="toggleAllCheck(this)"></th>
         <th>고객사</th><th>계약명</th><th>업무시스템</th><th>보안서약</th><th>계약기간</th><th>관리</th>
       </tr></thead>
       <tbody id="cust-body"><tr><td colspan="6" class="loading">불러오는 중...</td></tr></tbody>
@@ -760,17 +762,19 @@ function renderCustomers() {
     const firstC = g.customers[0];
     const btnHtml = g.customers.map(c=>
       `<button class="btn btn-sm" onclick="editCustomer(${c.id})" title="${c.contract_name||''}">수정${multiContract?` <span style="font-size:10px;opacity:.6">(${(c.contract_name||'').slice(0,4)})</span>`:''}</button>`
-    ).join('') + `<button class="btn btn-sm btn-danger" onclick="delCustomer(${firstC.id})">삭제</button>`;
+    ).join('');
 
-    return `<tr style="vertical-align:top">
+    const checkIds = g.customers.map(c=>c.id).join(',');
+    return `<tr style="vertical-align:top" data-ids="${checkIds}">
+      <td style="width:36px;padding-top:12px"><input type="checkbox" class="row-check" value="${checkIds}" onchange="updateDeleteBtn()"></td>
       <td title="${g.name}"><strong style="font-size:13px">${g.name}</strong></td>
-      <td style="font-size:12px;color:var(--text2)">${g.customers.map(c=>c.contract_name||'').filter(Boolean).join('<br>')}</td>
+      <td style="font-size:12px;color:var(--text2)">${g.customers.map(c=>c.contract_name||'').filter(v=>v).join('<br>') || '-'}</td>
       <td style="min-width:300px">${sysHtml}</td>
       <td>${firstC.security||'-'}</td>
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${firstC.contract_start?firstC.contract_start.slice(0,10):''}${firstC.contract_end?' ~ '+firstC.contract_end.slice(0,10):''}</td>
       <td class="actions">${btnHtml}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="6" class="empty">검색 결과 없음</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="empty">검색 결과 없음</td></tr>';
 }
 
 function openCustModal(c) {
@@ -918,6 +922,33 @@ function addAccessRow(){
 }
 
 function editCustomer(id){ openCustModal(DATA.customers.find(c=>c.id===id)); }
+
+function toggleAllCheck(el) {
+  document.querySelectorAll('.row-check').forEach(c=>c.checked=el.checked);
+  updateDeleteBtn();
+}
+
+function updateDeleteBtn() {
+  const checked = document.querySelectorAll('.row-check:checked').length;
+  const btn = document.getElementById('delete-selected-btn');
+  if(btn) btn.style.display = checked > 0 ? 'inline-flex' : 'none';
+  const all = document.querySelectorAll('.row-check').length;
+  const chkAll = document.getElementById('check-all');
+  if(chkAll) chkAll.indeterminate = checked > 0 && checked < all;
+  if(chkAll) chkAll.checked = checked === all && all > 0;
+}
+
+async function deleteSelected() {
+  const checked = [...document.querySelectorAll('.row-check:checked')];
+  if(!checked.length) return;
+  const ids = checked.flatMap(c=>c.value.split(',').map(Number));
+  if(!confirm(`선택한 ${ids.length}개 항목을 삭제할까요?`)) return;
+  for(const id of ids) {
+    await sb.from('customers').delete().eq('id', id);
+  }
+  showToast(`${ids.length}개 삭제됐어요`);
+  await loadAll();
+}
 
 async function saveCustomer() {
   const id = document.getElementById('cust-id').value;
