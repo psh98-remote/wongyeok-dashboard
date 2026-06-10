@@ -895,19 +895,12 @@ async function saveCustomer() {
   const name = document.getElementById('f-name').value.trim();
   if(!name){alert('고객사명을 입력해주세요');return;}
   const data = {
-    name, contract_name:document.getElementById('f-contract').value,
-    system_name:document.getElementById('f-system').value,
-    cycle:document.getElementById('f-cycle').value,
-    base_month:document.getElementById('f-base-month').value,
-    specific_day:document.getElementById('f-specific-day').value,
-    product:document.getElementById('f-product').value,
-    version:document.getElementById('f-version').value,
-    manager:document.getElementById('f-manager').value,
-    vpn:document.getElementById('f-vpn').value,
-    security:document.getElementById('f-security').value,
-    security_expire_date:document.getElementById('f-sec-expire').value||null,
-    contract_start:document.getElementById('f-contract-start').value||null,
-    contract_end:document.getElementById('f-contract-end').value||null,
+    name,
+    contract_name: document.getElementById('f-contract').value,
+    security: document.getElementById('f-security').value,
+    security_expire_date: document.getElementById('f-sec-expire').value||null,
+    contract_start: document.getElementById('f-contract-start').value||null,
+    contract_end: document.getElementById('f-contract-end').value||null,
   };
   let err, savedName = name;
   if(id){ ({error:err}=await sb.from('customers').update(data).eq('id',id)); }
