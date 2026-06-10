@@ -729,26 +729,46 @@ function renderCustomers() {
     return true;
   });
 
-  document.getElementById('cust-body').innerHTML = rows.length ? rows.map(c=>{
-    const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
-    const sysHtml = sysList.length ? sysList.map(s=>`
-      <div style="display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:12px">
+  // 같은 고객사명끼리 묶기
+  const grouped = [];
+  const seen = {};
+  rows.forEach(c => {
+    if(!seen[c.name]) {
+      seen[c.name] = { customers: [], name: c.name };
+      grouped.push(seen[c.name]);
+    }
+    seen[c.name].customers.push(c);
+  });
+
+  document.getElementById('cust-body').innerHTML = grouped.length ? grouped.map(g => {
+    const allSystems = g.customers.flatMap(c => {
+      const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
+      return sysList.map(s=>({...s, contract_name: c.contract_name, _cid: c.id}));
+    });
+
+    const sysHtml = allSystems.length ? allSystems.map(s=>`
+      <div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap">
         ${cycBadge(s.cycle)}
         <span style="color:var(--text);font-weight:500">${s.system_name||'시스템명 없음'}</span>
         <span style="color:var(--text3)">${s.product||''} ${s.version||''}</span>
         <span style="color:var(--text3)">· ${s.manager||'-'}</span>
         ${s.vpn==='사용'?'<span class="tag">VPN</span>':''}
+        ${g.customers.length>1?`<span style="font-size:10px;color:var(--text3);background:var(--bg3);padding:1px 5px;border-radius:3px">${s.contract_name||''}</span>`:''}
       </div>`).join('') : '<span style="color:var(--text3);font-size:12px">-</span>';
+
+    const firstC = g.customers[0];
+    const contractNames = g.customers.map(c=>c.contract_name).filter(Boolean).join(' / ');
+    const btnHtml = g.customers.map(c=>
+      `<button class="btn btn-sm" onclick="editCustomer(${c.id})" title="${c.contract_name||c.name} 수정">수정${g.customers.length>1?` (${(c.contract_name||'').slice(0,4)})`:''}</button>`
+    ).join('') + `<button class="btn btn-sm btn-danger" onclick="delCustomer(${firstC.id})">삭제</button>`;
+
     return `<tr>
-      <td title="${c.name}"><strong style="font-size:13px">${c.name}</strong></td>
-      <td class="ellipsis" style="font-size:12px;color:var(--text2);max-width:200px">${c.contract_name||'-'}</td>
+      <td title="${g.name}"><strong style="font-size:13px">${g.name}</strong></td>
+      <td style="font-size:12px;color:var(--text2);max-width:200px">${contractNames||'-'}</td>
       <td style="min-width:300px">${sysHtml}</td>
-      <td>${c.security||'-'}</td>
-      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${c.contract_start?c.contract_start.slice(0,10):''}${c.contract_end?' ~ '+c.contract_end.slice(0,10):''}</td>
-      <td class="actions">
-        <button class="btn btn-sm" onclick="editCustomer(${c.id})">수정</button>
-        <button class="btn btn-sm btn-danger" onclick="delCustomer(${c.id})">삭제</button>
-      </td>
+      <td>${firstC.security||'-'}</td>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${firstC.contract_start?firstC.contract_start.slice(0,10):''}${firstC.contract_end?' ~ '+firstC.contract_end.slice(0,10):''}</td>
+      <td class="actions" style="flex-wrap:wrap;gap:4px">${btnHtml}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="6" class="empty">검색 결과 없음</td></tr>';
 }
