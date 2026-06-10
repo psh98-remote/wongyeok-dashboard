@@ -598,7 +598,7 @@ document.getElementById('hdr-date').textContent = NOW.toLocaleDateString('ko-KR'
 async function loadAll() {
   const [c,sy,i,l,r,ct,a] = await Promise.all([
     sb.from('customers').select('*').order('name'),
-    sb.from('systems').select('*').order('customer_name'),
+    sb.from('systems').select('*').order('customer_id'),
     sb.from('inspections').select('*').order('year',{ascending:false}).order('month',{ascending:false}).order('customer_name'),
     sb.from('licenses').select('*').order('customer_name'),
     sb.from('reports').select('*').order('created_at',{ascending:false}),
@@ -722,7 +722,7 @@ function renderCustomers() {
 
   let rows = DATA.customers.filter(c=>{
     if(q && !c.name.toLowerCase().includes(q)) return false;
-    const sysList = DATA.systems.filter(s=>s.customer_name===c.name);
+    const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
     if(cycle && !sysList.some(s=>s.cycle===cycle)) return false;
     if(prod && !sysList.some(s=>(s.product||'').includes(prod))) return false;
     if(mgr && !sysList.some(s=>s.manager===mgr)) return false;
@@ -730,7 +730,7 @@ function renderCustomers() {
   });
 
   document.getElementById('cust-body').innerHTML = rows.length ? rows.map(c=>{
-    const sysList = DATA.systems.filter(s=>s.customer_name===c.name);
+    const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
     const sysHtml = sysList.length ? sysList.map(s=>`
       <div style="display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:12px">
         ${cycBadge(s.cycle)}
@@ -763,7 +763,7 @@ function openCustModal(c) {
   document.getElementById('f-contract-start').value = c?c.contract_start?c.contract_start.slice(0,10):'':'';
   document.getElementById('f-contract-end').value = c?c.contract_end?c.contract_end.slice(0,10):'':'';
   // systems
-  const mySystems = c ? DATA.systems.filter(x=>x.customer_name===c.name) : [];
+  const mySystems = c ? DATA.systems.filter(x=>x.customer_id===c.id) : [];
   document.getElementById('system-list-area').innerHTML = mySystems.map(s=>systemRow(s)).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0">업무시스템 없음. 아래 버튼으로 추가하세요.</div>';
   // contacts
   const myContacts = DATA.contacts.filter(x=>x.customer_name===(c?c.name:''));
@@ -911,9 +911,13 @@ async function saveCustomer() {
     contract_start: document.getElementById('f-contract-start').value||null,
     contract_end: document.getElementById('f-contract-end').value||null,
   };
-  let err, savedName = name;
+  let err, savedName = name, savedId = id ? parseInt(id) : null;
   if(id){ ({error:err}=await sb.from('customers').update(data).eq('id',id)); }
-  else { ({error:err}=await sb.from('customers').insert(data)); }
+  else {
+    const {data:newCust, error:insErr} = await sb.from('customers').insert(data);
+    err = insErr;
+    if(!err && newCust && newCust.length) savedId = newCust[0].id;
+  }
   if(err){showToast('저장 실패: '+err.message,true);return;}
 
   // save systems
@@ -921,6 +925,7 @@ async function saveCustomer() {
   for(const div of systemDivs){
     const sid = div.dataset.systemid;
     const sd = {
+      customer_id: savedId,
       customer_name: savedName,
       system_name: div.querySelector('.sys-name').value,
       cycle: div.querySelector('.sys-cycle').value,
