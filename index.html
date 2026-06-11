@@ -970,48 +970,101 @@ function addAccessRow(){
 function editCustomer(id){ openCustModal(DATA.customers.find(c=>c.id===id)); }
 
 function exportExcel() {
-  // CSV 형식으로 생성 후 xlsx처럼 다운로드
-  const rows = [];
-  // 헤더
-  rows.push(['고객사명','유지보수 계약명','업무시스템명','점검주기','점검기준월','특정일','점검제품','버전','담당자','VPN','보안서약','계약시작일','계약종료일']);
+  // 현재 필터 조건 읽기
+  const q = document.getElementById('cq').value.toLowerCase();
+  const monthFilter = document.getElementById('c-month').value;
+  const cycle = document.getElementById('c-cycle').value;
+  const prod = document.getElementById('c-prod').value;
+  const mgr = document.getElementById('c-mgr').value;
 
-  // 데이터
-  DATA.customers.forEach(c => {
+  // 현재 화면에 표시된 고객사만 필터링
+  const filteredCustomers = DATA.customers.filter(c=>{
+    if(q && !c.name.toLowerCase().includes(q)) return false;
     const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
-    if(sysList.length === 0) {
-      rows.push([c.name, c.contract_name||'', '', '', '', '', '', '', '', '', c.security||'', c.contract_start||'', c.contract_end||'']);
-    } else {
-      sysList.forEach((s, i) => {
-        rows.push([
-          i===0 ? c.name : '',
-          i===0 ? (c.contract_name||'') : '',
-          s.system_name||'',
-          s.cycle||'',
-          s.base_month||'',
-          s.specific_day||'',
-          s.product||'',
-          s.version||'',
-          s.manager||'',
-          s.vpn||'',
-          i===0 ? (c.security||'') : '',
-          i===0 ? (c.contract_start||'') : '',
-          i===0 ? (c.contract_end||'') : '',
-        ]);
+    if(cycle && !sysList.some(s=>s.cycle===cycle)) return false;
+    if(prod && !sysList.some(s=>(s.product||'').includes(prod))) return false;
+    if(mgr && !sysList.some(s=>s.manager===mgr)) return false;
+    if(monthFilter) {
+      const monthNum = parseInt(monthFilter);
+      const hasInsp = DATA.inspections.some(i=>i.customer_name===c.name && i.month===monthFilter);
+      const willCreate = sysList.some(s=>{
+        if(!s.cycle||s.cycle==='장애시(필요시)') return false;
+        if(s.cycle==='월1회') return true;
+        if(s.cycle==='분기') {
+          const base = s.base_month||'';
+          if(base) {
+            const valid = base.split(/[,\/\s]+/).map(m=>parseInt(m.trim())).filter(m=>!isNaN(m));
+            return valid.includes(monthNum);
+          }
+          return [3,6,9,12].includes(monthNum);
+        }
+        return false;
       });
+      if(!hasInsp && !willCreate) return false;
     }
+    return true;
   });
 
-  // BOM + CSV 생성
+  const rows = [];
+  // 헤더
+  const headers = ['고객사명','유지보수 계약명','업무시스템명','점검주기','점검기준월','특정일','점검제품','버전','담당자','VPN','보안서약','계약시작일','계약종료일'];
+  if(monthFilter) headers.push(`${parseInt(monthFilter)}월 점검현황`);
+  rows.push(headers);
+
+  // 중복 제거 (같은 이름 고객사 묶기)
+  const seen = {};
+  filteredCustomers.forEach(c => {
+    if(!seen[c.name]) seen[c.name] = [];
+    seen[c.name].push(c);
+  });
+
+  Object.values(seen).forEach(customers => {
+    customers.forEach((c, ci) => {
+      const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
+      const inspStatus = monthFilter ? (() => {
+        const insp = DATA.inspections.find(i=>i.customer_name===c.name && i.month===monthFilter);
+        return insp ? insp.status : '미등록';
+      })() : '';
+
+      if(sysList.length === 0) {
+        const row = [c.name, c.contract_name||'', '', '', '', '', '', '', '', '', c.security||'', c.contract_start||'', c.contract_end||''];
+        if(monthFilter) row.push(inspStatus);
+        rows.push(row);
+      } else {
+        sysList.forEach((s, i) => {
+          const row = [
+            i===0&&ci===0 ? c.name : '',
+            i===0 ? (c.contract_name||'') : '',
+            s.system_name||'',
+            s.cycle||'',
+            s.base_month||'',
+            s.specific_day||'',
+            s.product||'',
+            s.version||'',
+            s.manager||'',
+            s.vpn||'',
+            i===0&&ci===0 ? (c.security||'') : '',
+            i===0&&ci===0 ? (c.contract_start||'') : '',
+            i===0&&ci===0 ? (c.contract_end||'') : '',
+          ];
+          if(monthFilter) row.push(i===0&&ci===0 ? inspStatus : '');
+          rows.push(row);
+        });
+      }
+    });
+  });
+
   const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  a.download = `원격점검_고객사목록_${today}.csv`;
+  const suffix = monthFilter ? `_${parseInt(monthFilter)}월` : '';
+  a.download = `원격점검_고객사목록${suffix}_${today}.csv`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('다운로드 완료!');
+  showToast(`${Object.keys(seen).length}개 고객사 다운로드 완료!`);
 }
 
 function toggleAllCheck(el) {
