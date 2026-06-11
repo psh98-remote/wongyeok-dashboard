@@ -285,11 +285,18 @@ textarea{resize:vertical;min-height:72px;height:auto}
 <div class="page" id="page-customers">
   <div class="toolbar">
     <input class="search-input" type="text" id="cq" placeholder="고객사명 검색..." oninput="renderCustomers()">
+    <select class="filter-select" id="c-month" onchange="renderCustomers()">
+      <option value="">전체 월</option>
+      <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
+      <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
+      <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
+      <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+    </select>
     <select class="filter-select" id="c-cycle" onchange="renderCustomers()">
       <option value="">전체 주기</option><option>월1회</option><option>분기</option><option>장애시(필요시)</option>
     </select>
     <select class="filter-select" id="c-prod" onchange="renderCustomers()">
-      <option value="">전체 제품</option><option>리포트</option><option>이폼</option><option>코드엑스</option><option>한글로폼</option><option>유니파이</option><option>한글로폼</option>
+      <option value="">전체 제품</option><option>리포트</option><option>이폼</option><option>코드엑스</option><option>한글로폼</option><option>유니파이</option>
     </select>
     <select class="filter-select" id="c-mgr" onchange="renderCustomers()">
       <option value="">전체 담당자</option><option>박소희</option><option>한대웅</option><option>정상우</option><option>유재천</option>
@@ -302,7 +309,7 @@ textarea{resize:vertical;min-height:72px;height:auto}
     <table>
       <thead><tr>
         <th style="width:36px"><input type="checkbox" id="check-all" onchange="toggleAllCheck(this)"></th>
-        <th>고객사</th><th>계약명</th><th>업무시스템</th><th>보안서약</th><th>계약기간</th><th>관리</th>
+        <th>고객사</th><th>계약명</th><th>업무시스템</th><th id="insp-status-th" style="display:none">점검현황</th><th>보안서약</th><th>계약기간</th><th>관리</th>
       </tr></thead>
       <tbody id="cust-body"><tr><td colspan="6" class="loading">불러오는 중...</td></tr></tbody>
     </table>
@@ -723,12 +730,34 @@ function renderCustomers() {
   const mgr = document.getElementById('c-mgr').value;
   const cycBadge = s => s==='월1회'?'<span class="badge b-monthly">월1회</span>':s==='분기'?'<span class="badge b-quarter">분기</span>':`<span class="tag">${s||'-'}</span>`;
 
+  const monthFilter = document.getElementById('c-month').value;
   let rows = DATA.customers.filter(c=>{
     if(q && !c.name.toLowerCase().includes(q)) return false;
     const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
     if(cycle && !sysList.some(s=>s.cycle===cycle)) return false;
     if(prod && !sysList.some(s=>(s.product||'').includes(prod))) return false;
     if(mgr && !sysList.some(s=>s.manager===mgr)) return false;
+    // 월 필터: 해당 월에 점검 대상인 고객사만
+    if(monthFilter) {
+      const monthNum = parseInt(monthFilter);
+      const hasInspThisMonth = DATA.inspections.some(i=>
+        i.customer_name===c.name && i.month===monthFilter
+      );
+      const willBeCreated = sysList.some(s=>{
+        if(!s.cycle || s.cycle==='장애시(필요시)') return false;
+        if(s.cycle==='월1회') return true;
+        if(s.cycle==='분기') {
+          const base = s.base_month||'';
+          if(base) {
+            const validMonths = base.split(/[,\/\s]+/).map(m=>parseInt(m.trim())).filter(m=>!isNaN(m));
+            return validMonths.includes(monthNum);
+          }
+          return [3,6,9,12].includes(monthNum);
+        }
+        return false;
+      });
+      if(!hasInspThisMonth && !willBeCreated) return false;
+    }
     return true;
   });
 
@@ -769,16 +798,29 @@ function renderCustomers() {
       `<button class="btn btn-sm" onclick="editCustomer(${c.id})" style="white-space:nowrap;display:block;margin-bottom:3px">수정${multiContract?` <span style="font-size:10px;opacity:.6">(${(c.contract_name||'').slice(0,4)})</span>`:''}</button>`
     ).join('');
 
+    // 월 필터 선택 시 해당 월 점검 상태 표시
+    const mf = document.getElementById('c-month').value;
+    const inspCell = mf ? (() => {
+      const insp = DATA.inspections.find(i=>i.customer_name===g.name && i.month===mf);
+      if(!insp) return '<span class="badge b-todo">미등록</span>';
+      if(insp.status==='완료') return '<span class="badge b-done">완료</span>';
+      if(insp.status==='예정') return '<span class="badge b-plan">예정</span>';
+      return '<span class="badge b-todo">미완료</span>';
+    })() : '';
+
     return `<tr style="vertical-align:top" data-ids="${checkIds}">
       <td style="width:36px"><input type="checkbox" class="row-check" value="${checkIds}" onchange="updateDeleteBtn()"></td>
       <td><strong style="font-size:13px">${g.name}</strong></td>
       <td style="font-size:12px;color:var(--text2);max-width:160px">${g.customers.map(c=>c.contract_name||'').filter(v=>v).join('<br>') || '-'}</td>
       <td>${sysBlocks}</td>
+      <td style="${mf?'':'display:none'}">${inspCell}</td>
       <td>${firstC.security||'-'}</td>
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${firstC.contract_start?firstC.contract_start.slice(0,10):''}${firstC.contract_end?'<br>~ '+firstC.contract_end.slice(0,10):''}</td>
       <td>${btnHtml}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty">검색 결과 없음</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="empty">검색 결과 없음</td></tr>';
+  const th = document.getElementById('insp-status-th');
+  if(th) th.style.display = monthFilter ? '' : 'none';
 }
 
 function openCustModal(c) {
