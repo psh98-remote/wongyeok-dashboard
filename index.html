@@ -295,6 +295,7 @@ textarea{resize:vertical;min-height:72px;height:auto}
       <option value="">전체 담당자</option><option>박소희</option><option>한대웅</option><option>정상우</option><option>유재천</option>
     </select>
     <button class="btn btn-primary" onclick="openCustModal()">+ 고객사 추가</button>
+    <button class="btn" onclick="exportExcel()">📥 엑셀 다운로드</button>
     <button class="btn btn-danger" onclick="deleteSelected()" id="delete-selected-btn" style="display:none">선택 삭제</button>
   </div>
   <div class="table-wrap">
@@ -925,6 +926,51 @@ function addAccessRow(){
 }
 
 function editCustomer(id){ openCustModal(DATA.customers.find(c=>c.id===id)); }
+
+function exportExcel() {
+  // CSV 형식으로 생성 후 xlsx처럼 다운로드
+  const rows = [];
+  // 헤더
+  rows.push(['고객사명','유지보수 계약명','업무시스템명','점검주기','점검기준월','특정일','점검제품','버전','담당자','VPN','보안서약','계약시작일','계약종료일']);
+
+  // 데이터
+  DATA.customers.forEach(c => {
+    const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
+    if(sysList.length === 0) {
+      rows.push([c.name, c.contract_name||'', '', '', '', '', '', '', '', '', c.security||'', c.contract_start||'', c.contract_end||'']);
+    } else {
+      sysList.forEach((s, i) => {
+        rows.push([
+          i===0 ? c.name : '',
+          i===0 ? (c.contract_name||'') : '',
+          s.system_name||'',
+          s.cycle||'',
+          s.base_month||'',
+          s.specific_day||'',
+          s.product||'',
+          s.version||'',
+          s.manager||'',
+          s.vpn||'',
+          i===0 ? (c.security||'') : '',
+          i===0 ? (c.contract_start||'') : '',
+          i===0 ? (c.contract_end||'') : '',
+        ]);
+      });
+    }
+  });
+
+  // BOM + CSV 생성
+  const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  a.download = `원격점검_고객사목록_${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('다운로드 완료!');
+}
 
 function toggleAllCheck(el) {
   document.querySelectorAll('.row-check').forEach(c=>c.checked=el.checked);
