@@ -840,7 +840,10 @@ function openCustModal(c) {
   document.getElementById('contact-list-area').innerHTML = myContacts.map((ct,i)=>contactRow(ct,i)).join('') || '<div style="color:#bbb;font-size:13px;padding:8px 0">담당자 없음. 아래 버튼으로 추가하세요.</div>';
   // access
   const myAccess = DATA.access.filter(x=>x.customer_name===(c?c.name:''));
-  document.getElementById('access-list-area').innerHTML = myAccess.map((a,i)=>accessRow(a,i)).join('') || '<div style="color:#bbb;font-size:13px;padding:8px 0">접속정보 없음. 아래 버튼으로 추가하세요.</div>';
+  document.getElementById('access-list-area').innerHTML = myAccess.map((a,i)=>accessRow(a,i)).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0">접속정보 없음. 아래 버튼으로 추가하세요.</div>';
+  // licenses
+  const myLicenses = c ? DATA.licenses.filter(x=>x.customer_name===c.name) : [];
+  document.getElementById('license-list-area').innerHTML = myLicenses.map(l=>licenseRow(l)).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0">라이선스 없음. 아래 버튼으로 추가하세요.</div>';
   switchModalTab('cust',0);
   document.getElementById('cust-modal').classList.add('open');
 }
@@ -915,7 +918,10 @@ function systemRow(s) {
 }
 
 function addSystemRow() {
-  document.getElementById('system-list-area').innerHTML += systemRow({});
+  const area = document.getElementById('system-list-area');
+  const placeholder = area.querySelector('div[style*="color:var(--text3)"]');
+  if(placeholder) placeholder.remove();
+  area.insertAdjacentHTML('beforeend', systemRow({}));
 }
 
 async function removeSystemRow(btn) {
@@ -943,7 +949,10 @@ function licenseRow(l) {
 }
 
 function addLicenseRow() {
-  document.getElementById('license-list-area').innerHTML += licenseRow({});
+  const area = document.getElementById('license-list-area');
+  const placeholder = area.querySelector('div[style*="color:var(--text3)"]');
+  if(placeholder) placeholder.remove();
+  area.insertAdjacentHTML('beforeend', licenseRow({}));
 }
 
 async function removeLicenseRow(btn) {
@@ -959,12 +968,15 @@ async function removeLicenseRow(btn) {
 
 function addContactRow(){
   const area = document.getElementById('contact-list-area');
-  const prev = area.querySelector('.form-grid') ? '' : '';
-  area.innerHTML += contactRow({},Date.now());
+  const placeholder = area.querySelector('div[style*="color:#bbb"], div[style*="color:var(--text3)"]');
+  if(placeholder) placeholder.remove();
+  area.insertAdjacentHTML('beforeend', contactRow({}, Date.now()));
 }
 function addAccessRow(){
   const area = document.getElementById('access-list-area');
-  area.innerHTML += accessRow({},Date.now());
+  const placeholder = area.querySelector('div[style*="color:#bbb"], div[style*="color:var(--text3)"]');
+  if(placeholder) placeholder.remove();
+  area.insertAdjacentHTML('beforeend', accessRow({}, Date.now()));
 }
 
 function editCustomer(id){ openCustModal(DATA.customers.find(c=>c.id===id)); }
@@ -1148,7 +1160,7 @@ async function saveCustomer() {
       cc_email:div.querySelector('.ct-cc').value,
       note:div.querySelector('.ct-note').value,
     };
-    if(cid && !cid.startsWith('1')) await sb.from('contacts').update(cd).eq('id',cid);
+    if(cid && /^\d+$/.test(cid)) await sb.from('contacts').update(cd).eq('id', parseInt(cid));
     else if(cd.contact_name||cd.phone||cd.email) await sb.from('contacts').insert(cd);
   }
   // save access
