@@ -256,29 +256,28 @@ textarea{resize:vertical;min-height:72px;height:auto}
   <div class="stat-row" id="home-stats"></div>
   <div id="home-alerts"></div>
 
-  <!-- 고객사 검색 -->
-  <div class="search-box">
-    <div class="search-box-title">🔍 고객사 빠른 검색</div>
-    <div style="display:flex;gap:8px">
-      <input class="search-input" type="text" id="quick-search" placeholder="고객사명 입력..." oninput="quickSearch()" onkeydown="if(event.key==='Enter')quickSearch()" style="flex:1">
-      <button class="btn btn-primary" onclick="quickSearch()">검색</button>
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <strong style="font-size:14px" id="home-month-title"></strong>
+      <span id="home-progress-txt" style="font-size:13px;color:var(--text2)"></span>
     </div>
-    <div id="quick-search-results" style="margin-top:8px"></div>
-  </div>
-
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <strong style="font-size:14px" id="home-month-title"></strong>
-    <div style="display:flex;gap:6px">
-      <select class="filter-select" id="home-filter" onchange="renderHome()">
-        <option value="">전체</option><option value="미완료">미완료만</option><option value="완료">완료만</option><option value="예정">예정만</option>
-      </select>
-      <select class="filter-select" id="home-mgr" onchange="renderHome()">
+    <div style="height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-bottom:12px">
+      <div id="home-progress-bar" style="height:100%;background:var(--green);border-radius:4px;transition:width .4s;width:0%"></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-sm" id="hf-all" onclick="setHomeFilter('')">전체</button>
+      <button class="btn btn-sm" id="hf-todo" onclick="setHomeFilter('미완료')" style="color:var(--red);border-color:#f0a0a0">미완료</button>
+      <button class="btn btn-sm" id="hf-plan" onclick="setHomeFilter('예정')" style="color:var(--orange);border-color:#fcd58a">예정</button>
+      <button class="btn btn-sm" id="hf-done" onclick="setHomeFilter('완료')" style="color:var(--green);border-color:#b8dda0">완료</button>
+      <select class="filter-select" id="home-mgr" onchange="renderHome()" style="height:28px;font-size:12px;margin-left:auto">
         <option value="">전체 담당자</option>
         <option>박소희</option><option>한대웅</option><option>정상우</option><option>유재천</option>
       </select>
+      <input type="text" id="home-search" placeholder="고객사 검색..." oninput="renderHome()" style="height:28px;font-size:12px;width:140px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none">
     </div>
   </div>
-  <div class="todo-grid" id="home-grid"></div>
+
+  <div id="home-list" style="display:flex;flex-direction:column;gap:4px"></div>
 </div>
 
 <!-- ═══ CUSTOMERS ═══ -->
@@ -648,9 +647,22 @@ function goPage(p, el) {
 }
 
 // ── HOME ──
+let homeFilter = '';
+function setHomeFilter(f) {
+  homeFilter = f;
+  ['all','todo','plan','done'].forEach(k => {
+    const btn = document.getElementById('hf-'+k);
+    if(btn) btn.style.fontWeight = '';
+  });
+  const map = {'':'all','미완료':'todo','예정':'plan','완료':'done'};
+  const btn = document.getElementById('hf-'+(map[f]||'all'));
+  if(btn) btn.style.fontWeight = '600';
+  renderHome();
+}
+
 function renderHome() {
-  const filter = document.getElementById('home-filter').value;
   const mgr = document.getElementById('home-mgr').value;
+  const q = (document.getElementById('home-search')||{}).value?.toLowerCase()||'';
   const mLabel = {'01':'1월','02':'2월','03':'3월','04':'4월','05':'5월','06':'6월','07':'7월','08':'8월','09':'9월','10':'10월','11':'11월','12':'12월'};
   document.getElementById('home-month-title').textContent = `${THIS_YEAR}년 ${mLabel[THIS_MONTH]} 점검 현황`;
 
@@ -659,57 +671,72 @@ function renderHome() {
   const todo = thisMonthInsp.filter(i=>i.status==='미완료').length;
   const plan = thisMonthInsp.filter(i=>i.status==='예정').length;
   const total = thisMonthInsp.length;
+  const pct = total ? Math.round(done/total*100) : 0;
 
   document.getElementById('home-stats').innerHTML = `
     <div class="stat"><div class="stat-label">이번 달 전체</div><div class="stat-val">${total}</div></div>
-    <div class="stat"><div class="stat-label">완료</div><div class="stat-val" style="color:#3B6D11">${done}</div></div>
-    <div class="stat"><div class="stat-label">미완료</div><div class="stat-val" style="color:#A32D2D">${todo}</div></div>
-    <div class="stat"><div class="stat-label">예정</div><div class="stat-val" style="color:#854F0B">${plan}</div></div>
-    <div class="stat"><div class="stat-label">완료율</div><div class="stat-val" style="color:#185FA5">${total?Math.round(done/total*100):0}%</div></div>
+    <div class="stat"><div class="stat-label">완료</div><div class="stat-val" style="color:var(--green)">${done}</div></div>
+    <div class="stat"><div class="stat-label">미완료</div><div class="stat-val" style="color:var(--red)">${todo}</div></div>
+    <div class="stat"><div class="stat-label">예정</div><div class="stat-val" style="color:var(--orange)">${plan}</div></div>
+    <div class="stat"><div class="stat-label">완료율</div><div class="stat-val" style="color:var(--accent)">${pct}%</div></div>
   `;
+  document.getElementById('home-progress-bar').style.width = pct+'%';
+  document.getElementById('home-progress-txt').textContent = `${done} / ${total} 완료`;
 
-  // 보안서약 만료 알림
+  // 알림
   const alerts = [];
   const soon = new Date(); soon.setDate(soon.getDate()+30);
   DATA.customers.forEach(c=>{
-    if(c.security_expire_date){
-      const exp = new Date(c.security_expire_date);
-      if(exp <= soon) alerts.push(`<div class="alert-card">⚠️ <div><div class="alert-title">${c.name}</div><div class="alert-body">보안서약서 갱신 필요 (${c.security_expire_date})</div></div></div>`);
-    }
-    if(c.contract_end){
-      const exp = new Date(c.contract_end);
-      if(exp <= soon) alerts.push(`<div class="alert-card">📋 <div><div class="alert-title">${c.name}</div><div class="alert-body">유지보수 계약 만료 예정 (${c.contract_end})</div></div></div>`);
-    }
+    if(c.security_expire_date && new Date(c.security_expire_date)<=soon)
+      alerts.push(`<div class="alert-card">⚠️ <div><div class="alert-title">${c.name}</div><div class="alert-body">보안서약서 갱신 필요 (${c.security_expire_date})</div></div></div>`);
+    if(c.contract_end && new Date(c.contract_end)<=soon)
+      alerts.push(`<div class="alert-card">📋 <div><div class="alert-title">${c.name}</div><div class="alert-body">유지보수 계약 만료 예정 (${c.contract_end})</div></div></div>`);
   });
   document.getElementById('home-alerts').innerHTML = alerts.join('');
 
-  let rows = thisMonthInsp;
-  if(filter) rows = rows.filter(i=>i.status===filter);
+  // 필터 적용 후 가나다 정렬
+  let rows = [...thisMonthInsp];
+  if(homeFilter) rows = rows.filter(i=>i.status===homeFilter);
   if(mgr) rows = rows.filter(i=>i.manager===mgr);
+  if(q) rows = rows.filter(i=>i.customer_name.toLowerCase().includes(q));
+  rows.sort((a,b)=>a.customer_name.localeCompare(b.customer_name,'ko'));
 
-  const statusClass = s => s==='완료'?'done':s==='예정'?'plan':'';
   const badge = s => s==='완료'?'<span class="badge b-done">완료</span>':s==='예정'?'<span class="badge b-plan">예정</span>':'<span class="badge b-todo">미완료</span>';
+  const statusBg = s => s==='완료'?'border-left:3px solid var(--green)':s==='예정'?'border-left:3px solid var(--orange)':'border-left:3px solid var(--red)';
 
-  document.getElementById('home-grid').innerHTML = rows.length ? rows.map(i=>`
-    <div class="todo-card ${statusClass(i.status)}">
-      <div class="todo-card-name">${i.customer_name}</div>
-      <div class="todo-card-meta" style="margin-bottom:6px">${i.product||''} ${i.version||''} · ${i.manager||'-'}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
+  document.getElementById('home-list').innerHTML = rows.length ? rows.map((i,idx)=>`
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;${statusBg(i.status)}">
+      <!-- 헤더 (클릭하면 열림) -->
+      <div onclick="toggleAccordion(${i.id})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+        <span style="font-size:13px;font-weight:500;flex:1">${i.customer_name}</span>
+        ${i.system_name?`<span style="font-size:11px;color:var(--text3)">${i.system_name}</span>`:''}
+        <span style="font-size:12px;color:var(--text3)">${i.product||''} · ${i.manager||'-'}</span>
         ${badge(i.status)}
-        <span style="font-size:11px;color:#aaa">${i.inspection_date||''}</span>
+        <span style="font-size:11px;color:var(--text3);min-width:70px;text-align:right">${i.inspection_date||''}</span>
+        <span id="arrow-${i.id}" style="color:var(--text3);font-size:12px;transition:transform .2s">▼</span>
       </div>
-      <div style="margin-top:8px">
-        <textarea class="card-note-input" data-id="${i.id}" placeholder="비고 입력..." rows="2" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);resize:none;font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)';saveCardNote(${i.id},this.value)">${i.note||''}</textarea>
-      </div>
-      <div class="todo-card-footer">
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${i.status!=='완료'?`<button class="btn btn-sm btn-primary" onclick="quickStatus(${i.id},'완료')">완료</button>`:''}
+      <!-- 확장 영역 -->
+      <div id="acc-${i.id}" style="display:none;padding:10px 14px;border-top:1px solid var(--border);background:var(--bg2)">
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          ${i.status!=='완료'?`<button class="btn btn-sm btn-primary" onclick="quickStatus(${i.id},'완료')">완료처리</button>`:''}
           ${i.status!=='예정'?`<button class="btn btn-sm" style="border-color:#fcd58a;color:var(--orange);background:var(--orange-bg)" onclick="openSchedulePopup(${i.id})">예정 등록</button>`:''}
           <button class="btn btn-sm" onclick="editInspection(${i.id})">수정</button>
         </div>
-        <span class="todo-card-date">${i.inspection_date||''}</span>
+        <div>
+          <label style="font-size:11px;color:var(--text2);font-weight:500;display:block;margin-bottom:4px">점검 특이사항</label>
+          <textarea rows="3" style="width:100%;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);resize:vertical;font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)';saveCardNote(${i.id},this.value)" placeholder="특이사항, 메모 입력...">${i.note||''}</textarea>
+        </div>
       </div>
-    </div>`).join('') : '<div class="empty">이번 달 점검 데이터가 없어요</div>';
+    </div>`).join('') : '<div class="empty">해당 조건의 점검 데이터가 없어요</div>';
+}
+
+function toggleAccordion(id) {
+  const body = document.getElementById('acc-'+id);
+  const arrow = document.getElementById('arrow-'+id);
+  if(!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 async function quickStatus(id, status) {
