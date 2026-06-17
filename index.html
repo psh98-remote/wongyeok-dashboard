@@ -717,15 +717,20 @@ function renderHome() {
       </div>
       <!-- 확장 영역 -->
       <div id="acc-${i.id}" style="display:none;padding:10px 14px;border-top:1px solid var(--border);background:var(--bg2)">
-        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
           ${i.status!=='완료'?`<button class="btn btn-sm btn-primary" onclick="quickStatus(${i.id},'완료')">완료처리</button>`:''}
           ${i.status!=='예정'?`<button class="btn btn-sm" style="border-color:#fcd58a;color:var(--orange);background:var(--orange-bg)" onclick="openSchedulePopup(${i.id})">예정 등록</button>`:''}
           <button class="btn btn-sm" onclick="editInspection(${i.id})">수정</button>
         </div>
-        <div>
+        <div style="margin-bottom:14px">
           <label style="font-size:11px;color:var(--text2);font-weight:500;display:block;margin-bottom:4px">점검 특이사항</label>
           <textarea rows="3" style="width:100%;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);resize:vertical;font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)';saveCardNote(${i.id},this.value)" placeholder="특이사항, 메모 입력...">${i.note||''}</textarea>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label style="font-size:11px;color:var(--text2);font-weight:600">점검 서버 정보</label>
+          <button class="btn btn-sm" onclick="addServerCard(${i.id})">+ 서버 추가</button>
+        </div>
+        <div id="servers-${i.id}"></div>
       </div>
     </div>`).join('') : '<div class="empty">해당 조건의 점검 데이터가 없어요</div>';
 }
@@ -737,6 +742,103 @@ function toggleAccordion(id) {
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+  if(!isOpen) loadServerCards(id);
+}
+
+function serverCardHTML(s) {
+  const sid = s.id || '';
+  return `<div class="server-card" data-serverid="${sid}" style="border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;margin-bottom:8px;background:var(--bg)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:500;color:var(--text2)">서버</span>
+      <button onclick="removeServerCard(this)" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px" title="삭제">✕</button>
+    </div>
+    <div class="form-grid" style="gap:8px;margin-bottom:8px">
+      <div class="form-group"><label class="flabel">서버 IP</label><input class="srv-ip" placeholder="예) 192.168.1.1" value="${s.server_ip||''}"></div>
+      <div class="form-group"><label class="flabel">장비명</label><input class="srv-device" placeholder="예) WEB-01" value="${s.device_name||''}"></div>
+    </div>
+    <div class="form-grid" style="gap:8px;margin-bottom:8px">
+      <div class="form-group"><label class="flabel">적용 폰트</label><input class="srv-font" value="${s.font||''}"></div>
+      <div class="form-group"><label class="flabel">Java 버전</label><input class="srv-java" value="${s.java_version||''}"></div>
+    </div>
+    <div class="form-grid" style="gap:8px;margin-bottom:8px">
+      <div class="form-group"><label class="flabel">Lib 버전</label><input class="srv-lib" value="${s.lib_version||''}"></div>
+      <div class="form-group"><label class="flabel">JS 버전</label><input class="srv-js" value="${s.js_version||''}"></div>
+    </div>
+    <div class="form-group full"><label class="flabel">라이선스 키</label><input class="srv-license" value="${s.license_key||''}"></div>
+  </div>`;
+}
+
+let serverDataCache = {};
+
+async function loadServerCards(inspId) {
+  const area = document.getElementById('servers-'+inspId);
+  if(!area) return;
+  const {data, error} = await sb.from('inspection_servers').select('*').eq('inspection_id', inspId);
+  if(error) { area.innerHTML = '<div style="font-size:12px;color:var(--text3)">불러오기 실패</div>'; return; }
+  serverDataCache[inspId] = data || [];
+  area.innerHTML = (data && data.length)
+    ? data.map(s=>serverCardHTML(s)).join('') + serverSaveBtn(inspId)
+    : '<div style="font-size:12px;color:var(--text3);padding:6px 0">등록된 서버 없음</div>' + serverSaveBtn(inspId);
+}
+
+function serverSaveBtn(inspId) {
+  return `<button class="btn btn-sm btn-primary" style="margin-top:4px" onclick="saveServerCards(${inspId})">서버 정보 저장</button>`;
+}
+
+function addServerCard(inspId) {
+  const area = document.getElementById('servers-'+inspId);
+  if(!area) return;
+  // 기존 저장 버튼/빈 메시지 제거 후 새 카드 추가, 버튼 다시 붙임
+  const existingBtn = area.querySelector('button.btn-primary');
+  if(existingBtn) existingBtn.remove();
+  const emptyMsg = area.querySelector('div[style*="등록된 서버 없음"]');
+  if(emptyMsg) emptyMsg.remove();
+  area.insertAdjacentHTML('beforeend', serverCardHTML({}));
+  area.insertAdjacentHTML('beforeend', serverSaveBtn(inspId));
+}
+
+function removeServerCard(btn) {
+  const card = btn.closest('.server-card');
+  if(card) card.remove();
+}
+
+async function saveServerCards(inspId) {
+  const area = document.getElementById('servers-'+inspId);
+  if(!area) return;
+  const cards = area.querySelectorAll('.server-card');
+  const existing = serverDataCache[inspId] || [];
+  const keptIds = [];
+
+  for(const card of cards) {
+    const sid = card.dataset.serverid;
+    const data = {
+      inspection_id: inspId,
+      server_ip: card.querySelector('.srv-ip').value,
+      device_name: card.querySelector('.srv-device').value,
+      font: card.querySelector('.srv-font').value,
+      java_version: card.querySelector('.srv-java').value,
+      lib_version: card.querySelector('.srv-lib').value,
+      js_version: card.querySelector('.srv-js').value,
+      license_key: card.querySelector('.srv-license').value,
+    };
+    if(sid && /^\d+$/.test(sid)) {
+      await sb.from('inspection_servers').update(data).eq('id', parseInt(sid));
+      keptIds.push(parseInt(sid));
+    } else {
+      const {data: inserted} = await sb.from('inspection_servers').insert(data);
+      if(inserted && inserted[0]) keptIds.push(inserted[0].id);
+    }
+  }
+
+  // 삭제된 카드 처리 (기존에 있었는데 더 이상 화면에 없는 것)
+  for(const old of existing) {
+    if(!keptIds.includes(old.id)) {
+      await sb.from('inspection_servers').delete().eq('id', old.id);
+    }
+  }
+
+  showToast('서버 정보 저장됐어요!');
+  loadServerCards(inspId);
 }
 
 async function quickStatus(id, status) {
