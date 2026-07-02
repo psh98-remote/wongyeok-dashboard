@@ -246,7 +246,6 @@ textarea{resize:vertical;min-height:72px;height:auto}
   <button class="nav-btn active" onclick="goPage('home',this)"><span class="nav-icon">🏠</span> 이번 달 할 일</button>
   <button class="nav-btn" onclick="goPage('customers',this)"><span class="nav-icon">🏢</span> 고객사</button>
   <button class="nav-btn" onclick="goPage('inspections',this)"><span class="nav-icon">✅</span> 점검 현황</button>
-  
   <button class="nav-btn" onclick="goPage('reports',this)"><span class="nav-icon">📁</span> 보고서</button>
   <button class="nav-btn" onclick="goPage('history',this)"><span class="nav-icon">📅</span> 히스토리</button>
 </div>
@@ -404,7 +403,6 @@ textarea{resize:vertical;min-height:72px;height:auto}
     </div>
   </div>
 </div>
-<!-- ══════════ MODALS ══════════ -->
 
 <!-- Customer Modal -->
 <div class="overlay" id="cust-modal">
@@ -418,7 +416,6 @@ textarea{resize:vertical;min-height:72px;height:auto}
       <button class="modal-tab" onclick="switchModalTab('cust',4)">라이선스</button>
     </div>
     <input type="hidden" id="cust-id">
-    <!-- Tab 0 기본정보 -->
     <div class="modal-tab-content active" id="cust-tab-0">
       <div class="form-grid">
         <div class="form-group full"><label class="flabel">고객사명 *</label><input id="f-name"></div>
@@ -431,22 +428,18 @@ textarea{resize:vertical;min-height:72px;height:auto}
         <div class="form-group"><label class="flabel">계약 종료일</label><input type="date" id="f-contract-end"></div>
       </div>
     </div>
-    <!-- Tab 4 업무시스템 -->
     <div class="modal-tab-content" id="cust-tab-1">
       <div id="system-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addSystemRow()">+ 업무시스템 추가</button>
     </div>
-    <!-- Tab 1 담당자 -->
     <div class="modal-tab-content" id="cust-tab-2">
       <div id="contact-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addContactRow()">+ 담당자 추가</button>
     </div>
-    <!-- Tab 2 접속정보 -->
     <div class="modal-tab-content" id="cust-tab-3">
       <div id="access-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addAccessRow()">+ 접속정보 추가</button>
     </div>
-    <!-- Tab 3 라이선스 -->
     <div class="modal-tab-content" id="cust-tab-4">
       <div id="license-list-area"></div>
       <button class="btn btn-sm" style="margin-top:8px" onclick="addLicenseRow()">+ 라이선스 추가</button>
@@ -683,7 +676,6 @@ function renderHome() {
   document.getElementById('home-progress-bar').style.width = pct+'%';
   document.getElementById('home-progress-txt').textContent = `${done} / ${total} 완료`;
 
-  // 알림
   const alerts = [];
   const soon = new Date(); soon.setDate(soon.getDate()+30);
   DATA.customers.forEach(c=>{
@@ -694,7 +686,6 @@ function renderHome() {
   });
   document.getElementById('home-alerts').innerHTML = alerts.join('');
 
-  // 필터 적용 후 가나다 정렬
   let rows = [...thisMonthInsp];
   if(homeFilter) rows = rows.filter(i=>i.status===homeFilter);
   if(mgr) rows = rows.filter(i=>i.manager===mgr);
@@ -706,7 +697,6 @@ function renderHome() {
 
   document.getElementById('home-list').innerHTML = rows.length ? rows.map((i,idx)=>`
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;${statusBg(i.status)}">
-      <!-- 헤더 (클릭하면 열림) -->
       <div onclick="toggleAccordion(${i.id})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
         <span style="font-size:13px;font-weight:500;flex:1">${i.customer_name}</span>
         ${i.system_name?`<span style="font-size:11px;color:var(--text3)">${i.system_name}</span>`:''}
@@ -715,7 +705,6 @@ function renderHome() {
         <span style="font-size:11px;color:var(--text3);min-width:70px;text-align:right">${i.inspection_date||''}</span>
         <span id="arrow-${i.id}" style="color:var(--text3);font-size:12px;transition:transform .2s">▼</span>
       </div>
-      <!-- 확장 영역 -->
       <div id="acc-${i.id}" style="display:none;padding:10px 14px;border-top:1px solid var(--border);background:var(--bg2)">
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
           ${i.status!=='완료'?`<button class="btn btn-sm btn-primary" onclick="quickStatus(${i.id},'완료')">완료처리</button>`:''}
@@ -788,7 +777,6 @@ function serverSaveBtn(inspId) {
 function addServerCard(inspId) {
   const area = document.getElementById('servers-'+inspId);
   if(!area) return;
-  // 기존 저장 버튼/빈 메시지 제거 후 새 카드 추가, 버튼 다시 붙임
   const existingBtn = area.querySelector('button.btn-primary');
   if(existingBtn) existingBtn.remove();
   const emptyMsg = area.querySelector('div[style*="등록된 서버 없음"]');
@@ -830,7 +818,6 @@ async function saveServerCards(inspId) {
     }
   }
 
-  // 삭제된 카드 처리 (기존에 있었는데 더 이상 화면에 없는 것)
   for(const old of existing) {
     if(!keptIds.includes(old.id)) {
       await sb.from('inspection_servers').delete().eq('id', old.id);
@@ -866,7 +853,6 @@ function renderCustomers() {
     if(cycle && !sysList.some(s=>s.cycle===cycle)) return false;
     if(prod && !sysList.some(s=>(s.product||'').includes(prod))) return false;
     if(mgr && !sysList.some(s=>s.manager===mgr)) return false;
-    // 월 필터: 해당 월에 점검 대상인 고객사만
     if(monthFilter) {
       const monthNum = parseInt(monthFilter);
       const hasInspThisMonth = DATA.inspections.some(i=>
@@ -890,7 +876,6 @@ function renderCustomers() {
     return true;
   });
 
-  // 같은 고객사명끼리 묶기
   const grouped = [];
   const seen = {};
   rows.forEach(c => {
@@ -903,7 +888,6 @@ function renderCustomers() {
 
   document.getElementById('cust-body').innerHTML = grouped.length ? grouped.map(g => {
     const multiContract = g.customers.length > 1;
-    // 계약별로 시스템 블록 생성
     const sysBlocks = g.customers.map(c => {
       const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
       const sysRows = sysList.map(s=>`
@@ -923,11 +907,12 @@ function renderCustomers() {
 
     const firstC = g.customers[0];
     const checkIds = g.customers.map(c=>c.id).join(',');
+
+    // ── FIX: 수정 버튼에 stopPropagation 추가 ──
     const btnHtml = g.customers.map(c=>
-      `<button class="btn btn-sm" onclick="editCustomer(${c.id})" style="white-space:nowrap;display:block;margin-bottom:3px">수정${multiContract?` <span style="font-size:10px;opacity:.6">(${(c.contract_name||'').slice(0,4)})</span>`:''}</button>`
+      `<button class="btn btn-sm" onclick="event.stopPropagation();editCustomer(${c.id})" style="white-space:nowrap;display:block;margin-bottom:3px">수정${multiContract?` <span style="font-size:10px;opacity:.6">(${(c.contract_name||'').slice(0,4)})</span>`:''}</button>`
     ).join('');
 
-    // 월 필터 선택 시 해당 월 점검 상태 표시
     const mf = document.getElementById('c-month').value;
     const inspCell = mf ? (() => {
       const insp = DATA.inspections.find(i=>i.customer_name===g.name && i.month===mf);
@@ -937,8 +922,9 @@ function renderCustomers() {
       return '<span class="badge b-todo">미완료</span>';
     })() : '';
 
-    return `<tr style="vertical-align:top" data-ids="${checkIds}">
-      <td style="width:36px"><input type="checkbox" class="row-check" value="${checkIds}" onchange="updateDeleteBtn()"></td>
+    // ── FIX: tr에 onclick으로 상세모달 열기, 체크박스에 stopPropagation ──
+    return `<tr style="vertical-align:top;cursor:pointer" data-ids="${checkIds}" onclick="openDetailModal('${g.name.replace(/'/g, "\\'")}')">
+      <td style="width:36px"><input type="checkbox" class="row-check" value="${checkIds}" onclick="event.stopPropagation()" onchange="updateDeleteBtn()"></td>
       <td><strong style="font-size:13px">${g.name}</strong></td>
       <td style="font-size:12px;color:var(--text2);max-width:160px">${g.customers.map(c=>c.contract_name||'').filter(v=>v).join('<br>') || '-'}</td>
       <td>${sysBlocks}</td>
@@ -961,16 +947,12 @@ function openCustModal(c) {
   document.getElementById('f-sec-expire').value = c?c.security_expire_date||'':'';
   document.getElementById('f-contract-start').value = c?c.contract_start?c.contract_start.slice(0,10):'':'';
   document.getElementById('f-contract-end').value = c?c.contract_end?c.contract_end.slice(0,10):'':'';
-  // systems
   const mySystems = c ? DATA.systems.filter(x=>x.customer_id===c.id) : [];
   document.getElementById('system-list-area').innerHTML = mySystems.map(s=>systemRow(s)).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0">업무시스템 없음. 아래 버튼으로 추가하세요.</div>';
-  // contacts
   const myContacts = DATA.contacts.filter(x=>x.customer_name===(c?c.name:''));
   document.getElementById('contact-list-area').innerHTML = myContacts.map((ct,i)=>contactRow(ct,i)).join('') || '<div style="color:#bbb;font-size:13px;padding:8px 0">담당자 없음. 아래 버튼으로 추가하세요.</div>';
-  // access
   const myAccess = DATA.access.filter(x=>x.customer_name===(c?c.name:''));
   document.getElementById('access-list-area').innerHTML = myAccess.map((a,i)=>accessRow(a,i)).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0">접속정보 없음. 아래 버튼으로 추가하세요.</div>';
-  // licenses
   const myLicenses = c ? DATA.licenses.filter(x=>x.customer_name===c.name) : [];
   document.getElementById('license-list-area').innerHTML = myLicenses.map(l=>licenseRow(l)).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0">라이선스 없음. 아래 버튼으로 추가하세요.</div>';
   switchModalTab('cust',0);
@@ -988,6 +970,7 @@ function contactRow(ct,i){
     <div class="form-group full"><label class="flabel">메모</label><input class="ct-note" value="${ct.note||''}"></div>
   </div>`;
 }
+
 function accessRow(a,i){
   const fileHtml = a.file_url
     ? `<div style="margin-top:4px;font-size:12px">📎 <a href="${a.file_url}" target="_blank" style="color:#7F77DD">${a.file_name||'파일'}</a> <button onclick="removeAccessFile(this,'${a.id||''}')" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:11px">삭제</button></div>`
@@ -1002,11 +985,11 @@ function accessRow(a,i){
     <div class="form-group full"><label class="flabel">가이드/매뉴얼 파일</label>${fileHtml}</div>
   </div>`;
 }
+
 async function removeRow(btn) {
   const div = btn.closest('.form-grid');
   const contactId = div.dataset.contactid;
   const accessId = div.dataset.accessid;
-  // ID가 숫자면 DB에 저장된 항목 → 삭제
   if(contactId && /^\d+$/.test(contactId)) {
     const {error} = await sb.from('contacts').delete().eq('id', parseInt(contactId));
     if(error){ showToast('삭제 실패: '+error.message, true); return; }
@@ -1111,14 +1094,12 @@ function addAccessRow(){
 function editCustomer(id){ openCustModal(DATA.customers.find(c=>c.id===id)); }
 
 function exportExcel() {
-  // 현재 필터 조건 읽기
   const q = document.getElementById('cq').value.toLowerCase();
   const monthFilter = document.getElementById('c-month').value;
   const cycle = document.getElementById('c-cycle').value;
   const prod = document.getElementById('c-prod').value;
   const mgr = document.getElementById('c-mgr').value;
 
-  // 현재 화면에 표시된 고객사만 필터링
   const filteredCustomers = DATA.customers.filter(c=>{
     if(q && !c.name.toLowerCase().includes(q)) return false;
     const sysList = DATA.systems.filter(s=>s.customer_id===c.id);
@@ -1147,12 +1128,10 @@ function exportExcel() {
   });
 
   const rows = [];
-  // 헤더
   const headers = ['고객사명','유지보수 계약명','업무시스템명','점검주기','점검기준월','특정일','점검제품','버전','담당자','VPN','보안서약','계약시작일','계약종료일'];
   if(monthFilter) headers.push(`${parseInt(monthFilter)}월 점검현황`);
   rows.push(headers);
 
-  // 중복 제거 (같은 이름 고객사 묶기)
   const seen = {};
   filteredCustomers.forEach(c => {
     if(!seen[c.name]) seen[c.name] = [];
@@ -1292,6 +1271,7 @@ async function saveCustomer() {
     if(cid && /^\d+$/.test(cid)) await sb.from('contacts').update(cd).eq('id', parseInt(cid));
     else if(cd.contact_name||cd.phone||cd.email) await sb.from('contacts').insert(cd);
   }
+
   // save access
   const accessDivs = document.getElementById('access-list-area').querySelectorAll('.form-grid');
   for(const div of accessDivs){
@@ -1304,7 +1284,6 @@ async function saveCustomer() {
       file_name: div.dataset.fileName || null,
       file_url: div.dataset.fileUrl || null,
     };
-    // 파일 업로드 처리
     const fileInput = div.querySelector('.ac-file');
     if(fileInput && fileInput.files[0]) {
       const file = fileInput.files[0];
@@ -1335,6 +1314,50 @@ async function saveCustomer() {
     };
     if(lid && /^\d+$/.test(lid)) await sb.from('licenses').update(ld).eq('id', parseInt(lid));
     else if(ld.project_name||ld.ip||ld.product) await sb.from('licenses').insert(ld);
+  }
+
+  // ── FIX: 신규 고객사 추가 시 이번 달 점검 자동 생성 ──
+  if (!id) {
+    const systemDivsAll = document.getElementById('system-list-area').querySelectorAll('[data-systemid]');
+    for (const div of systemDivsAll) {
+      const cycle = div.querySelector('.sys-cycle').value;
+      const baseMonth = div.querySelector('.sys-base-month').value;
+      const product = div.querySelector('.sys-product').value;
+      const version = div.querySelector('.sys-version').value;
+      const manager = div.querySelector('.sys-manager').value;
+      const sysName = div.querySelector('.sys-name').value;
+      const monthNum = parseInt(THIS_MONTH);
+      let shouldCreate = false;
+
+      if (cycle === '월1회') {
+        shouldCreate = true;
+      } else if (cycle === '분기') {
+        if (baseMonth) {
+          const validMonths = baseMonth.split(/[,\/\s]+/).map(m => parseInt(m.trim())).filter(m => !isNaN(m));
+          shouldCreate = validMonths.includes(monthNum);
+        } else {
+          shouldCreate = [3, 6, 9, 12].includes(monthNum);
+        }
+      }
+
+      if (shouldCreate) {
+        const already = DATA.inspections.some(i =>
+          i.customer_name === savedName && i.year === THIS_YEAR && i.month === THIS_MONTH
+        );
+        if (!already) {
+          await sb.from('inspections').insert({
+            customer_name: savedName,
+            year: THIS_YEAR,
+            month: THIS_MONTH,
+            product,
+            version,
+            manager,
+            system_name: sysName,
+            status: '미완료'
+          });
+        }
+      }
+    }
   }
 
   showToast(id?'수정됐어요!':'추가됐어요!');
@@ -1414,13 +1437,6 @@ async function delInspection(id){
   await sb.from('inspections').delete().eq('id',id);
   showToast('삭제됐어요');await loadAll();
 }
-
-// ── LICENSES ──
-
-
-{}
-
-
 
 // ── REPORTS ──
 function handleFile(input){
@@ -1538,7 +1554,6 @@ function switchModalTab(prefix,idx){
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
 // ── QUICK SEARCH ──
-let searchTimer = null;
 function quickSearch() {
   const q = document.getElementById('quick-search').value.trim().toLowerCase();
   const area = document.getElementById('quick-search-results');
@@ -1546,8 +1561,7 @@ function quickSearch() {
   const results = DATA.customers.filter(c => c.name.toLowerCase().includes(q));
   if (!results.length) { area.innerHTML = '<div style="color:#bbb;font-size:13px;padding:4px 0">검색 결과 없음</div>'; return; }
   area.innerHTML = results.slice(0,8).map(c => `
-    <div onclick="openDetailModal('${c.name.replace(/'/g,"\'")}')
-" style="padding:8px 12px;border:1px solid #e5e3db;border-radius:6px;margin-bottom:6px;cursor:pointer;background:#fff;display:flex;align-items:center;justify-content:space-between" onmouseover="this.style.background='#f5f4f0'" onmouseout="this.style.background='#fff'">
+    <div onclick="openDetailModal('${c.name.replace(/'/g,"\\'")}')" style="padding:8px 12px;border:1px solid #e5e3db;border-radius:6px;margin-bottom:6px;cursor:pointer;background:#fff;display:flex;align-items:center;justify-content:space-between" onmouseover="this.style.background='#f5f4f0'" onmouseout="this.style.background='#fff'">
       <div>
         <div style="font-size:13px;font-weight:500">${c.name}</div>
         <div style="font-size:12px;color:#aaa">${c.product||''} ${c.version||''} · ${c.manager||''} · ${c.cycle||''}</div>
@@ -1559,22 +1573,23 @@ function quickSearch() {
 let detailCustomerName = '';
 function openDetailModal(name) {
   detailCustomerName = name;
-  document.getElementById('quick-search').value = '';
-  document.getElementById('quick-search-results').innerHTML = '';
+  const quickSearchEl = document.getElementById('quick-search');
+  if(quickSearchEl) quickSearchEl.value = '';
+  const quickResultsEl = document.getElementById('quick-search-results');
+  if(quickResultsEl) quickResultsEl.innerHTML = '';
   const c = DATA.customers.find(x => x.name === name);
   if (!c) return;
   document.getElementById('detail-modal-name').textContent = c.name;
   const mLabel = {'01':'1월','02':'2월','03':'3월','04':'4월','05':'5월','06':'6월','07':'7월','08':'8월','09':'9월','10':'10월','11':'11월','12':'12월'};
   const badge = s => s==='완료'?'<span class="badge b-done">완료</span>':s==='예정'?'<span class="badge b-plan">예정</span>':'<span class="badge b-todo">미완료</span>';
 
-  // 기본정보
+  // 기본정보 — 시스템 정보도 함께 표시
+  const sysList = DATA.systems.filter(s => s.customer_id === c.id);
   const infos = [
     ['유지보수 계약명', c.contract_name],
-    ['점검주기', c.cycle],
-    ['특정일', c.specific_day],
-    ['점검제품', c.product + ' ' + (c.version||'')],
-    ['담당자', c.manager],
-    ['VPN', c.vpn],
+    ['점검주기', sysList.map(s=>s.cycle).filter(Boolean).join(', ')],
+    ['점검제품', sysList.map(s=>(s.product||'')+(s.version?' '+s.version:'')).filter(Boolean).join(', ')],
+    ['담당자', sysList.map(s=>s.manager).filter(Boolean).join(', ')],
     ['보안서약', c.security],
     ['계약기간', (c.contract_start||'') + (c.contract_end?' ~ '+c.contract_end:'')],
   ];
@@ -1679,7 +1694,6 @@ function goEditCustomer() {
   if(c){ closeModal('detail-modal'); editCustomer(c.id); }
 }
 
-
 async function removeAccessFile(btn, aid) {
   if(!confirm('파일을 삭제할까요?')) return;
   if(aid && /^\d+$/.test(aid)) {
@@ -1735,7 +1749,6 @@ function normalizeDate(s){
   return '';
 }
 
-// 모달 바깥 클릭으로 닫기 비활성화
 function showToast(msg,isErr){
   const t=document.getElementById('toast');
   t.textContent=msg;t.style.background=isErr?'#A32D2D':'#1a1a18';
@@ -1767,10 +1780,8 @@ function showApp() {
   document.getElementById('login-page').style.display = 'none';
   document.querySelector('header').style.display = 'flex';
   document.querySelector('.nav').style.display = 'flex';
-  // 모든 페이지 숨기고 home만 표시
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-home').classList.add('active');
-  // 탭 active 초기화
   document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', i===0));
   loadAll();
 }
