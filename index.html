@@ -698,7 +698,7 @@ function renderHome() {
   document.getElementById('home-list').innerHTML = rows.length ? rows.map((i,idx)=>`
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;${statusBg(i.status)}">
       <div onclick="toggleAccordion(${i.id})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-        <span style="font-size:13px;font-weight:500;flex:1">${i.customer_name}</span>
+        <span onclick="event.stopPropagation();openDetailModal('${i.customer_name.replace(/'/g,"\\'")}')" style="font-size:13px;font-weight:500;flex:1;color:var(--accent);text-decoration:underline;text-decoration-color:transparent;cursor:pointer" onmouseover="this.style.textDecorationColor='var(--accent)'" onmouseout="this.style.textDecorationColor='transparent'">${i.customer_name}</span>
         ${i.system_name?`<span style="font-size:11px;color:var(--text3)">${i.system_name}</span>`:''}
         <span style="font-size:12px;color:var(--text3)">${i.product||''} · ${i.manager||'-'}</span>
         ${badge(i.status)}
@@ -764,10 +764,42 @@ async function loadServerCards(inspId) {
   if(!area) return;
   const {data, error} = await sb.from('inspection_servers').select('*').eq('inspection_id', inspId);
   if(error) { area.innerHTML = '<div style="font-size:12px;color:var(--text3)">불러오기 실패</div>'; return; }
-  serverDataCache[inspId] = data || [];
-  area.innerHTML = (data && data.length)
-    ? data.map(s=>serverCardHTML(s)).join('') + serverSaveBtn(inspId)
-    : '<div style="font-size:12px;color:var(--text3);padding:6px 0">등록된 서버 없음</div>' + serverSaveBtn(inspId);
+
+  if(data && data.length) {
+    // 이미 서버 정보 있으면 그냥 표시
+    serverDataCache[inspId] = data;
+    area.innerHTML = data.map(s=>serverCardHTML(s)).join('') + serverSaveBtn(inspId);
+  } else {
+    // 서버 정보 없으면 → 같은 고객사의 직전 점검에서 서버 정보 이월 시도
+    const thisInsp = DATA.inspections.find(i=>i.id===parseInt(inspId));
+    let prevServers = [];
+    if(thisInsp) {
+      // 같은 고객사 점검 중 현재보다 이전 것들을 최신순 정렬
+      const prevInsps = DATA.inspections
+        .filter(i=>i.customer_name===thisInsp.customer_name && i.id!==thisInsp.id)
+        .sort((a,b)=> (b.year+b.month).localeCompare(a.year+a.month));
+      for(const prev of prevInsps) {
+        const {data: prevData} = await sb.from('inspection_servers').select('*').eq('inspection_id', prev.id);
+        if(prevData && prevData.length) { prevServers = prevData; break; }
+      }
+    }
+
+    if(prevServers.length) {
+      // 이월 데이터를 새 inspection_id로 복사해서 DB에 저장
+      const copied = [];
+      for(const s of prevServers) {
+        const {id, inspection_id, ...rest} = s; // id/inspection_id 제외하고 복사
+        const {data: inserted} = await sb.from('inspection_servers').insert({...rest, inspection_id: parseInt(inspId)});
+        if(inserted && inserted[0]) copied.push(inserted[0]);
+      }
+      serverDataCache[inspId] = copied;
+      area.innerHTML = `<div style="font-size:11px;color:var(--accent);padding:4px 0 8px;display:flex;align-items:center;gap:4px">↩ 직전 점검 서버 정보가 자동으로 이월됐어요. 확인 후 저장하세요.</div>`
+        + copied.map(s=>serverCardHTML(s)).join('') + serverSaveBtn(inspId);
+    } else {
+      serverDataCache[inspId] = [];
+      area.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">등록된 서버 없음</div>' + serverSaveBtn(inspId);
+    }
+  }
 }
 
 function serverSaveBtn(inspId) {
@@ -1206,11 +1238,26 @@ async function deleteSelected() {
   const checked = [...document.querySelectorAll('.row-check:checked')];
   if(!checked.length) return;
   const ids = checked.flatMap(c=>c.value.split(',').map(Number));
-  if(!confirm(`선택한 ${ids.length}개 항목을 삭제할까요?`)) return;
+  const names = ids.map(id => DATA.customers.find(c=>c.id===id)?.name).filter(Boolean);
+  if(!confirm(`선택한 고객사 ${names.join(', ')}을(를) 삭제할까요?\n연관된 점검/라이선스/담당자 정보도 모두 삭제됩니다.`)) return;
   for(const id of ids) {
+    const cust = DATA.customers.find(c=>c.id===id);
+    if(!cust) continue;
+    // 연관 데이터 먼저 삭제
+    await sb.from('systems').delete().eq('customer_id', id);
+    await sb.from('contacts').delete().eq('customer_name', cust.name);
+    await sb.from('access_info').delete().eq('customer_name', cust.name);
+    await sb.from('licenses').delete().eq('customer_name', cust.name);
+    // inspection_servers는 inspection_id 기준이므로 inspections 먼저 조회 후 삭제
+    const myInsps = DATA.inspections.filter(i=>i.customer_name===cust.name);
+    for(const insp of myInsps) {
+      await sb.from('inspection_servers').delete().eq('inspection_id', insp.id);
+    }
+    await sb.from('inspections').delete().eq('customer_name', cust.name);
+    await sb.from('reports').delete().eq('customer_name', cust.name);
     await sb.from('customers').delete().eq('id', id);
   }
-  showToast(`${ids.length}개 삭제됐어요`);
+  showToast(`${ids.length}개 고객사 삭제됐어요`);
   await loadAll();
 }
 
